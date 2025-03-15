@@ -10,6 +10,10 @@ pub struct Config {
 }
 
 impl Config {
+    pub fn images(&self) -> Vec<PathBuf> {
+        self.images.clone()
+    }
+
     pub fn total_sections(&self) -> usize {
         (self.sections.0 * self.sections.1) as usize
     }

@@ -1,22 +1,25 @@
-use std::sync::{Arc, Mutex};
+use std::{
+    path::PathBuf,
+    sync::{Arc, Mutex},
+};
 
 use iced::widget;
 
 use crate::{message::Message, state::State};
 
 pub struct App {
-    images: Vec<String>,
+    images: Vec<PathBuf>,
     screen_size: (i32, i32),
     sections: (i32, i32),
     state: Arc<Mutex<State>>,
 }
 
 impl App {
-    pub fn new() -> Self {
+    pub fn new(images: Vec<PathBuf>) -> Self {
         let screen_size = (1920, 1080);
         let sections = (3, 3);
         Self {
-            images: Vec::new(),
+            images,
             screen_size,
             sections,
             state: Arc::new(Mutex::new(State::new(screen_size, sections))),

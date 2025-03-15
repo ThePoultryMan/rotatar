@@ -1,6 +1,7 @@
 pub struct State {
     current_image: usize,
     section_size: (i32, i32),
+    x_sections: i32,
 }
 
 impl State {
@@ -8,6 +9,7 @@ impl State {
         Self {
             current_image: 0,
             section_size: (screen_size.0 / sections.0, screen_size.1 / sections.1),
+            x_sections: sections.0,
         }
     }
 
@@ -21,6 +23,10 @@ impl State {
 
     pub fn section_size(&self) -> (i32, i32) {
         self.section_size
+    }
+
+    pub fn x_sections(&self) -> i32 {
+        self.x_sections
     }
 }
 

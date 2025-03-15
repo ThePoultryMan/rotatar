@@ -52,7 +52,7 @@ async fn main() -> Result<(), Error> {
             );
         }
 
-        let app = App::new();
+        let app = App::new(config.images());
 
         let state = app.state();
         tokio::spawn(async move {
@@ -63,11 +63,12 @@ async fn main() -> Result<(), Error> {
                 if let Ok(mouse_position) = mouse.get_position() {
                     match state.lock() {
                         Ok(mut state) => {
-                            let section_size = state.section_size();
+                            let (section_size, x_sections) =
+                                (state.section_size(), state.x_sections());
                             state.set_current_image(to_2d_index(
                                 mouse_position.0 / section_size.0,
                                 mouse_position.1 / section_size.1,
-                                section_size.0,
+                                x_sections,
                             ));
                         }
                         Err(error) => {
