@@ -14,7 +14,7 @@ impl State {
     pub fn current_image(&self) -> usize {
         self.current_image
     }
-    
+
     pub fn set_current_image(&mut self, current_image: usize) {
         self.current_image = current_image;
     }
