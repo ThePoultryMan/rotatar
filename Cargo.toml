@@ -4,4 +4,6 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+iced = { version = "0.13.1", features = ["image"] }
 mouce = "0.2.51"
+tokio = { version = "1.44.1", features = ["macros", "rt", "rt-multi-thread", "time"] }
