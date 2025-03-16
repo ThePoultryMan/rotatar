@@ -26,7 +26,7 @@ enum Error {
     #[error("I/O Error")]
     IO(#[from] io::Error),
     #[error("Could not parse config file")]
-    ParseError(#[from] serde_json::Error),
+    Parse(#[from] serde_json::Error),
     #[error("Error from iced gui")]
     Iced(#[from] iced::Error),
 }

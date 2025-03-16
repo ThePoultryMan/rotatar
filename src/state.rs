@@ -23,13 +23,11 @@ impl State {
     pub fn set_current_image(&mut self, current_image: usize) -> bool {
         if self.current_image == current_image {
             false
+        } else if current_image <= (self.section_size.0 * self.section_size.1) as usize {
+            self.current_image = current_image;
+            true
         } else {
-            if current_image <= (self.section_size.0 * self.section_size.1) as usize {
-                self.current_image = current_image;
-                true
-            } else {
-                false
-            }
+            false
         }
     }
 
