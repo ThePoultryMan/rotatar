@@ -1,14 +1,10 @@
-use std::{fs::read_to_string, io, sync::Arc, thread, time::Duration};
+use std::{fs::read_to_string, io, time::Duration};
 
 use app::App;
 use clap::Parser;
 use cli::Args;
 use config::Config;
-use iced::{
-    task::Handle,
-    widget::{self, Image},
-    Task,
-};
+use iced::Task;
 use message::Message;
 use mouce::{Mouse, MouseActions};
 use state::to_2d_index;

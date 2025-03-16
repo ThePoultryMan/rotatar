@@ -16,8 +16,6 @@ use crate::{
 
 pub struct App {
     images: Vec<PathBuf>,
-    screen_size: (i32, i32),
-    sections: (i32, i32),
     current_image: usize,
     receiver: Arc<Receiver<Message>>,
     state: Arc<Mutex<State>>,
@@ -29,8 +27,6 @@ impl App {
         let sections = (3, 3);
         Self {
             images,
-            screen_size,
-            sections,
             current_image: to_2d_index(sections.0 / 2, sections.1 / 2, sections.0),
             receiver: Arc::new(receiver),
             state: Arc::new(Mutex::new(State::new(screen_size, sections))),
