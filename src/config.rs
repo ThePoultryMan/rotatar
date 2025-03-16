@@ -10,6 +10,14 @@ pub struct Config {
 }
 
 impl Config {
+    pub fn screen_size(&self) -> (i32, i32) {
+        self.screen_size
+    }
+
+    pub fn sections(&self) -> (i32, i32) {
+        self.sections
+    }
+
     pub fn images(&self) -> Vec<PathBuf> {
         self.images.clone()
     }

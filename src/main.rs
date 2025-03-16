@@ -50,7 +50,7 @@ async fn main() -> Result<(), Error> {
         }
 
         let (sender, receiver) = async_channel::unbounded();
-        let app = App::new(config.images(), receiver);
+        let app = App::new(config, receiver);
 
         let state = app.state();
         tokio::spawn(async move {

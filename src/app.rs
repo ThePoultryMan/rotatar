@@ -10,8 +10,7 @@ use iced::{
 };
 
 use crate::{
-    message::Message,
-    state::{to_2d_index, State},
+    config::Config, message::Message, state::{to_2d_index, State}
 };
 
 pub struct App {
@@ -22,11 +21,11 @@ pub struct App {
 }
 
 impl App {
-    pub fn new(images: Vec<PathBuf>, receiver: Receiver<Message>) -> Self {
-        let screen_size = (1920, 1080);
-        let sections = (3, 3);
+    pub fn new(config: Config, receiver: Receiver<Message>) -> Self {
+        let screen_size = config.screen_size();
+        let sections = config.sections();
         Self {
-            images,
+            images: config.images(),
             current_image: to_2d_index(sections.0 / 2, sections.1 / 2, sections.0),
             receiver: Arc::new(receiver),
             state: Arc::new(Mutex::new(State::new(screen_size, sections))),
