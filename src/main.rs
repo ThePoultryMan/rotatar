@@ -59,7 +59,7 @@ async fn main() -> Result<(), Error> {
             loop {
                 interval.tick().await;
                 if let Ok(mouse_position) = mouse.get_position() {
-                    let mut changed = false;
+                    let mut message_to_send = None;
                     match state.lock() {
                         Ok(mut state) => {
                             let (section_size, x_sections) =
@@ -69,15 +69,15 @@ async fn main() -> Result<(), Error> {
                                 mouse_position.1 / section_size.1,
                                 x_sections,
                             )) {
-                                changed = true;
+                                message_to_send = Some(Message::CurrentImageChanged);
                             }
                         }
                         Err(error) => {
                             todo!("{error}")
                         }
                     }
-                    if changed {
-                        let _ = sender.send(Message::CurrentImageChanged).await;
+                    if let Some(message_to_send) = message_to_send {
+                        let _ = sender.send(message_to_send).await;
                     }
                 }
             }
