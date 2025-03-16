@@ -24,8 +24,12 @@ impl State {
         if self.current_image == current_image {
             false
         } else {
-            self.current_image = current_image;
-            true
+            if current_image <= (self.section_size.0 * self.section_size.1) as usize {
+                self.current_image = current_image;
+                true
+            } else {
+                false
+            }
         }
     }
 
