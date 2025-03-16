@@ -6,11 +6,13 @@ use std::{
 use async_channel::Receiver;
 use iced::{
     futures::{SinkExt, Stream},
-    stream, widget, Subscription,
+    stream, widget, Background, Color, Subscription,
 };
 
 use crate::{
-    config::Config, message::Message, state::{to_2d_index, State}
+    config::Config,
+    message::Message,
+    state::{to_2d_index, State},
 };
 
 pub struct App {
@@ -54,6 +56,10 @@ impl App {
             widget::row![]
         };
         widget::container(row)
+            .style(|_| {
+                widget::container::Style::default()
+                    .background(Background::Color(Color::TRANSPARENT))
+            })
             .center_x(iced::Length::Fill)
             .center_y(iced::Length::Fill)
             .width(iced::Length::Fill)

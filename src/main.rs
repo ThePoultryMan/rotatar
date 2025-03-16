@@ -84,6 +84,7 @@ async fn main() -> Result<(), Error> {
         });
 
         iced::application("rotatar", App::update, App::view)
+            .transparent(true)
             .subscription(App::subscription)
             .run_with(|| (app, Task::none()))?;
     } else {
