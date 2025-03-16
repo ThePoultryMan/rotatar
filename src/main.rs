@@ -1,4 +1,4 @@
-use std::{fs::read_to_string, io, thread, time::Duration};
+use std::{fs::read_to_string, io, sync::Arc, thread, time::Duration};
 
 use app::App;
 use clap::Parser;
@@ -9,6 +9,7 @@ use iced::{
     widget::{self, Image},
     Task,
 };
+use message::Message;
 use mouce::{Mouse, MouseActions};
 use state::to_2d_index;
 use thiserror::Error;
@@ -52,7 +53,8 @@ async fn main() -> Result<(), Error> {
             );
         }
 
-        let app = App::new(config.images());
+        let (sender, receiver) = async_channel::unbounded();
+        let app = App::new(config.images(), receiver);
 
         let state = app.state();
         tokio::spawn(async move {
@@ -61,25 +63,33 @@ async fn main() -> Result<(), Error> {
             loop {
                 interval.tick().await;
                 if let Ok(mouse_position) = mouse.get_position() {
+                    let mut changed = false;
                     match state.lock() {
                         Ok(mut state) => {
                             let (section_size, x_sections) =
                                 (state.section_size(), state.x_sections());
-                            state.set_current_image(to_2d_index(
+                            if state.set_current_image(to_2d_index(
                                 mouse_position.0 / section_size.0,
                                 mouse_position.1 / section_size.1,
                                 x_sections,
-                            ));
+                            )) {
+                                changed = true;
+                            }
                         }
                         Err(error) => {
                             todo!("{error}")
                         }
                     }
+                    if changed {
+                        let _ = sender.send(Message::CurrentImageChanged).await;
+                    }
                 }
             }
         });
 
-        iced::application("rotatar", App::update, App::view).run_with(|| (app, Task::none()))?;
+        iced::application("rotatar", App::update, App::view)
+            .subscription(App::subscription)
+            .run_with(|| (app, Task::none()))?;
     } else {
         return Err(Error::NoConfig);
     }

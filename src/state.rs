@@ -1,3 +1,4 @@
+#[derive(Clone, Copy)]
 pub struct State {
     current_image: usize,
     section_size: (i32, i32),
@@ -17,8 +18,15 @@ impl State {
         self.current_image
     }
 
-    pub fn set_current_image(&mut self, current_image: usize) {
-        self.current_image = current_image;
+    /// Attempts to set the current image, returning true if successful. Returns false when the new
+    /// image is the same as the old, nothing will be set.
+    pub fn set_current_image(&mut self, current_image: usize) -> bool {
+        if self.current_image == current_image {
+            false
+        } else {
+            self.current_image = current_image;
+            true
+        }
     }
 
     pub fn section_size(&self) -> (i32, i32) {
