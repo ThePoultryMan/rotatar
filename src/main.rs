@@ -55,7 +55,12 @@ async fn main() -> Result<(), Error> {
         }
 
         let (sender, receiver) = async_channel::unbounded();
-        let app = App::new(config, receiver);
+        let background_color = if let Some(background_color) = args.background_color() {
+            background_color.into()
+        } else {
+            iced::Color::TRANSPARENT
+        };
+        let app = App::new(config, background_color, receiver);
 
         let state = app.state();
         tokio::spawn(async move {

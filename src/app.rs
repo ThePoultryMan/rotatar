@@ -6,7 +6,7 @@ use std::{
 use async_channel::Receiver;
 use iced::{
     futures::{SinkExt, Stream},
-    stream, widget, Background, Color, Subscription,
+    stream, widget, Background, Subscription,
 };
 
 use crate::{
@@ -20,10 +20,11 @@ pub struct App {
     current_image: usize,
     receiver: Arc<Receiver<Message>>,
     state: Arc<Mutex<State>>,
+    background_color: iced::Color,
 }
 
 impl App {
-    pub fn new(config: Config, receiver: Receiver<Message>) -> Self {
+    pub fn new(config: Config, background_color: iced::Color, receiver: Receiver<Message>) -> Self {
         let screen_size = config.screen_size();
         let sections = config.sections();
         Self {
@@ -31,6 +32,7 @@ impl App {
             current_image: to_2d_index(sections.0 / 2, sections.1 / 2, sections.0),
             receiver: Arc::new(receiver),
             state: Arc::new(Mutex::new(State::new(screen_size, sections))),
+            background_color,
         }
     }
 
@@ -58,7 +60,7 @@ impl App {
             widget::container(row)
                 .style(|_| {
                     widget::container::Style::default()
-                        .background(Background::Color(Color::TRANSPARENT))
+                        .background(Background::Color(self.background_color))
                 })
                 .center_x(iced::Length::Fill)
                 .center_y(iced::Length::Fill)
