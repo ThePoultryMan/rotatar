@@ -6,7 +6,7 @@ use std::{
 use async_channel::Receiver;
 use iced::{
     futures::{SinkExt, Stream},
-    stream, widget, Background, Color, Subscription,
+    stream, widget::{self, text}, Background, Color, Subscription,
 };
 
 use crate::{
@@ -43,28 +43,50 @@ impl App {
             }
             Message::Ready(sender) => {
                 let _ = sender.send_blocking(self.receiver.clone());
-            }
+            },
+            Message::SpeakingStateChange(speaking) => {
+                if let Ok(mut state) = self.state.lock() {
+                    state.set_speaking(speaking);
+                }
+            },
         }
     }
 
     pub fn view(&self) -> iced::Element<'_, Message> {
-        let row = if let Ok(state) = self.state.lock() {
-            widget::row![widget::image(
-                self.images.get(state.current_image()).unwrap()
-            )]
+        if let Ok(state) = self.state.lock() {
+            let row =  {
+                widget::row![widget::image(
+                    self.images.get(state.current_image()).unwrap()
+                )]
+            };
+            let column = widget::column![
+                widget::text(
+                    if state.speaking() {
+                        "speaking"
+                    } else {
+                        ""
+                    }
+                ),
+                row,
+            ];
+            widget::container(column)
+                .style(|_| {
+                    widget::container::Style::default()
+                        .background(Background::Color(Color::TRANSPARENT))
+                })
+                .center_x(iced::Length::Fill)
+                .center_y(iced::Length::Fill)
+                .width(iced::Length::Fill)
+                .height(iced::Length::Fill)
+                .into()
         } else {
-            widget::row![]
-        };
-        widget::container(row)
-            .style(|_| {
-                widget::container::Style::default()
-                    .background(Background::Color(Color::TRANSPARENT))
-            })
-            .center_x(iced::Length::Fill)
-            .center_y(iced::Length::Fill)
-            .width(iced::Length::Fill)
-            .height(iced::Length::Fill)
-            .into()
+            widget::container(widget::text("critical error encountered, restart pretty please."))
+                .center_x(iced::Length::Fill)
+                .center_y(iced::Length::Fill)
+                .width(iced::Length::Fill)
+                .height(iced::Length::Fill)
+                .into()
+        }
     }
 
     fn state_updater() -> impl Stream<Item = Message> {

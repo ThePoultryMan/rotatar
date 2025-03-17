@@ -1,0 +1,115 @@
+use std::time::{Duration, Instant};
+
+use async_channel::Sender;
+use cpal::{
+    traits::{DeviceTrait, HostTrait, StreamTrait},
+    BuildStreamError, Device, PlayStreamError, SupportedStreamConfig, SupportedStreamConfigsError,
+};
+use rustfft::{num_complex::Complex, num_traits::Zero, FftPlanner};
+use thiserror::Error;
+
+use crate::{message::Message, util::arctex};
+
+pub struct AudioHolder {
+    device: Device,
+    supported_config: SupportedStreamConfig,
+    sender: Sender<Message>,
+}
+
+#[derive(Debug, Error)]
+pub enum AudioError {
+    #[error("No input device could be found")]
+    NoInputDevice,
+    #[error("No SupportedStreamConfigRange was found")]
+    NoSupportedConfigRange,
+    #[error("SupportedStreamConfigsError")]
+    SupportedStreamConfigs(#[from] SupportedStreamConfigsError),
+    #[error("Error while building audio input stream")]
+    BuildStreamError(#[from] BuildStreamError),
+    #[error("Error while playing stream")]
+    PlayStreamError(#[from] PlayStreamError),
+}
+
+impl AudioHolder {
+    pub fn new(sender: Sender<Message>) -> Result<Self, AudioError> {
+        if let Some(input_device) = cpal::default_host().default_input_device() {
+            let mut supported_configs_range = input_device.supported_input_configs()?;
+            if let Some(supported_config) = supported_configs_range.next() {
+                Ok(Self {
+                    device: input_device,
+                    supported_config: supported_config.with_max_sample_rate(),
+                    sender,
+                })
+            } else {
+                Err(AudioError::NoSupportedConfigRange)
+            }
+        } else {
+            Err(AudioError::NoInputDevice)
+        }
+    }
+
+    // FIXME: Does not close when application is closed from the window.
+    /// Creating and running the stream does not block the thread, due to cpal's behavior.
+    pub async fn stream(self) -> Result<(), AudioError> {
+        let sampling_rate = self.supported_config.sample_rate().0;
+
+        let last_time = arctex!(Instant::now());
+        let sensitivity = arctex!(0.0);
+        let was_speaking = arctex!(false);
+
+        match self.device.build_input_stream(
+            &self.supported_config.config(),
+            move |data: &[f32], _: &cpal::InputCallbackInfo| {
+                if let (Ok(mut last_time), Ok(mut sensitivity), Ok(mut was_speaking)) =
+                    (last_time.lock(), sensitivity.lock(), was_speaking.lock())
+                {
+                    let delta = Instant::now().duration_since(*last_time).as_secs_f32();
+                    *last_time = Instant::now();
+
+                    let mut planner = FftPlanner::new();
+                    let fft = planner.plan_fft_inverse(data.len());
+
+                    let mut buffer: Vec<Complex<f32>> = Vec::new();
+                    for i in 0..data.len() {
+                        buffer.push(Complex {
+                            re: data[i],
+                            im: 0.0,
+                        });
+                    }
+                    fft.process(&mut buffer);
+
+                    let start = (20.0 * buffer.len() as f32 / sampling_rate as f32) as usize;
+                    let end = (20000.0 * buffer.len() as f32 / sampling_rate as f32) as usize;
+
+                    let mut magnitudes = Vec::with_capacity(end - start);
+                    for i in start..end {
+                        magnitudes.push((buffer[i].norm_sqr() as f64).sqrt() as i32 + 1);
+                    }
+                    let max_magnitude = *magnitudes.iter().max().unwrap_or(&0);
+
+                    *sensitivity = (*sensitivity - (3.0 * delta)).max(0.0);
+
+                    if max_magnitude > 6 {
+                        *sensitivity = 1.0;
+                    }
+
+                    let speaking = *sensitivity > 0.0;
+                    if *was_speaking != speaking {
+                        self.sender.send_blocking(Message::SpeakingStateChange(speaking)).expect("Channel is closed, something terrible has happened.");
+                    }
+                    *was_speaking = speaking;
+                }
+            },
+            move |error| {
+                panic!("{:#?}", error);
+            },
+            None,
+        ) {
+            Ok(stream) => {
+                stream.play()?;
+                loop {}
+            }
+            Err(error) => Err(AudioError::BuildStreamError(error)),
+        }
+    }
+}

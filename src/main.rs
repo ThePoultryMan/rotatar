@@ -1,9 +1,11 @@
 use std::{fs::read_to_string, io, time::Duration};
 
 use app::App;
+use audio::{AudioError, AudioHolder};
 use clap::Parser;
 use cli::Args;
 use config::Config;
+use cpal::traits::{HostTrait, StreamTrait};
 use iced::Task;
 use message::Message;
 use mouce::{Mouse, MouseActions};
@@ -12,17 +14,21 @@ use thiserror::Error;
 use tokio::time;
 
 mod app;
+mod audio;
 mod cli;
 mod config;
 mod message;
 mod state;
+mod util;
 
 #[derive(Debug, Error)]
 enum Error {
     #[error("No configuration file was specified")]
     NoConfig,
-    #[error("Configuration file is invalid: `{0}")]
+    #[error("Configuration file is invalid: `{0}`")]
     InvalidConfig(String),
+    #[error("An error occurred while attempting to use audio")]
+    Audio(#[from] AudioError),
     #[error("I/O Error")]
     IO(#[from] io::Error),
     #[error("Could not parse config file")]
@@ -55,6 +61,11 @@ async fn main() -> Result<(), Error> {
         let state = app.state();
         tokio::spawn(async move {
             let mouse = Mouse::new();
+            let audio_holder = AudioHolder::new(sender.clone()).expect("Failed to create AudioHolder");
+            tokio::spawn(async move {
+                audio_holder.stream().await.unwrap();
+            });
+
             let mut interval = time::interval(Duration::from_millis(100));
             loop {
                 interval.tick().await;
