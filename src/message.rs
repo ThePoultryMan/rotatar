@@ -6,5 +6,5 @@ use async_channel::{Receiver, Sender};
 pub enum Message {
     Ready(Sender<Arc<Receiver<Message>>>),
     CurrentImageChanged,
-    SpeakingStateChange(bool),
+    SensitivityChanged(f32),
 }

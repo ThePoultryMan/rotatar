@@ -46,9 +46,9 @@ impl App {
             Message::Ready(sender) => {
                 let _ = sender.send_blocking(self.receiver.clone());
             }
-            Message::SpeakingStateChange(speaking) => {
+            Message::SensitivityChanged(sensitivity) => {
                 if let Ok(mut state) = self.state.lock() {
-                    state.set_speaking(speaking);
+                    state.set_sensitivity(sensitivity);
                 }
             }
         }
@@ -56,23 +56,20 @@ impl App {
 
     pub fn view(&self) -> iced::Element<'_, Message> {
         if let Ok(state) = self.state.lock() {
-            let row = { widget::row![widget::image(self.get_current_image(&state))] };
-            widget::container(row)
+            let row = widget::row![widget::image(self.get_current_image(&state))];
+            let column = widget::column![row, widget::progress_bar(0.0..=1.0, state.sensitivity())];
+            widget::center(column)
                 .style(|_| {
                     widget::container::Style::default()
                         .background(Background::Color(self.background_color))
                 })
-                .center_x(iced::Length::Fill)
-                .center_y(iced::Length::Fill)
                 .width(iced::Length::Fill)
                 .height(iced::Length::Fill)
                 .into()
         } else {
-            widget::container(widget::text(
+            widget::center(widget::text(
                 "critical error encountered, restart pretty please.",
             ))
-            .center_x(iced::Length::Fill)
-            .center_y(iced::Length::Fill)
             .width(iced::Length::Fill)
             .height(iced::Length::Fill)
             .into()
@@ -80,7 +77,7 @@ impl App {
     }
 
     fn get_current_image(&self, state: &State) -> &PathBuf {
-        if state.speaking() {
+        if state.is_speaking() {
             self.config
                 .speaking_images()
                 .get(state.current_image())

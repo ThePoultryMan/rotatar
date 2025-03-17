@@ -55,14 +55,14 @@ impl AudioHolder {
         // We store these in here so the exist between all calls of the data callback.
         let last_time = arctex!(Instant::now());
         let sensitivity = arctex!(0.0);
-        let was_speaking = arctex!(false);
+        let last_sensitivity = arctex!(0.0);
 
         let moved_sender = self.sender.clone();
         match self.device.build_input_stream(
             &self.supported_config.config(),
             move |data: &[f32], _: &cpal::InputCallbackInfo| {
-                if let (Ok(mut last_time), Ok(mut sensitivity), Ok(mut was_speaking)) =
-                    (last_time.lock(), sensitivity.lock(), was_speaking.lock())
+                if let (Ok(mut last_time), Ok(mut sensitivity), Ok(mut last_sensitivity)) =
+                    (last_time.lock(), sensitivity.lock(), last_sensitivity.lock())
                 {
                     // Get the time since the last call.
                     let delta = Instant::now().duration_since(*last_time).as_secs_f32();
@@ -95,15 +95,14 @@ impl AudioHolder {
                         *sensitivity = (*sensitivity - (3.0 * delta)).max(0.0);
                     }
 
-                    // If the sensitivity is greater than the sensitivity threshold, we are speaking.
-                    // If the current speaking state has changed, update the app state.
-                    let speaking = *sensitivity > 0.0;
-                    if *was_speaking != speaking {
+                    // If the current sensitivity does not equal the last sensitivity, send an update
+                    // so that the state updates.
+                    if *last_sensitivity != *sensitivity {
                         // We can safely ignore this result because if the channel closes, the stream
                         // will be dropped.
-                        let _ = moved_sender.send_blocking(Message::SpeakingStateChange(speaking));
+                        let _ = moved_sender.send_blocking(Message::SensitivityChanged(*sensitivity));
                     }
-                    *was_speaking = speaking;
+                    *last_sensitivity = *sensitivity;
                 }
             },
             move |error| {
