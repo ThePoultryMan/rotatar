@@ -52,6 +52,7 @@ impl AudioHolder {
     pub async fn stream(self) -> Result<(), AudioError> {
         let sampling_rate = self.supported_config.sample_rate().0;
 
+        // We store these in here so the exist between all calls of the data callback.
         let last_time = arctex!(Instant::now());
         let sensitivity = arctex!(0.0);
         let was_speaking = arctex!(false);
@@ -63,33 +64,39 @@ impl AudioHolder {
                 if let (Ok(mut last_time), Ok(mut sensitivity), Ok(mut was_speaking)) =
                     (last_time.lock(), sensitivity.lock(), was_speaking.lock())
                 {
+                    // Get the time since the last call.
                     let delta = Instant::now().duration_since(*last_time).as_secs_f32();
                     *last_time = Instant::now();
 
+                    // Do FFT
                     let mut planner = FftPlanner::new();
                     let fft = planner.plan_fft_inverse(data.len());
-
                     let mut buffer: Vec<Complex<f32>> = Vec::new();
                     for item in data {
                         buffer.push(Complex { re: *item, im: 0.0 });
                     }
                     fft.process(&mut buffer);
 
+                    // Get maximum magnitude of FFT between 20hz and 20000hz
                     let start = (20.0 * buffer.len() as f32 / sampling_rate as f32) as usize;
                     let end = (20000.0 * buffer.len() as f32 / sampling_rate as f32) as usize;
-
                     let mut magnitudes = Vec::with_capacity(end - start);
                     for item in buffer.iter().take(end).skip(start) {
                         magnitudes.push((item.norm_sqr() as f64).sqrt() as i32 + 1);
                     }
                     let max_magnitude = *magnitudes.iter().max().unwrap_or(&0);
 
-                    *sensitivity = (*sensitivity - (3.0 * delta)).max(0.0);
-
+                    // If the maximum magnitude is greater than the "speaking threshold," sensitivity
+                    // is set to 1.0. If not, the sensitivity is decreased at a rate of 3.0 sensitivity/second.
+                    // Calculated using the delta found before.
                     if max_magnitude > 6 {
                         *sensitivity = 1.0;
+                    } else {
+                        *sensitivity = (*sensitivity - (3.0 * delta)).max(0.0);
                     }
 
+                    // If the sensitivity is greater than the sensitivity threshold, we are speaking.
+                    // If the current speaking state has changed, update the app state.
                     let speaking = *sensitivity > 0.0;
                     if *was_speaking != speaking {
                         // We can safely ignore this result because if the channel closes, the stream
