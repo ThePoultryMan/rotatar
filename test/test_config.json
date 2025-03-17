@@ -1,15 +1,26 @@
 {
   "screen_size": [1920, 1080],
   "sections": [3, 3],
-  "images": [
-    "./test/0-0.png",
-    "./test/1-0.png",
-    "./test/2-0.png",
-    "./test/0-1.png",
-    "./test/1-1.png",
-    "./test/2-1.png",
-    "./test/0-2.png",
-    "./test/1-2.png",
-    "./test/2-2.png"
+  "idle_images": [
+    "./test/idle/0-0.png",
+    "./test/idle/1-0.png",
+    "./test/idle/2-0.png",
+    "./test/idle/0-1.png",
+    "./test/idle/1-1.png",
+    "./test/idle/2-1.png",
+    "./test/idle/0-2.png",
+    "./test/idle/1-2.png",
+    "./test/idle/2-2.png"
+  ],
+  "speaking_images": [
+    "./test/speaking/0-0.png",
+    "./test/speaking/1-0.png",
+    "./test/speaking/2-0.png",
+    "./test/speaking/0-1.png",
+    "./test/speaking/1-1.png",
+    "./test/speaking/2-1.png",
+    "./test/speaking/0-2.png",
+    "./test/speaking/1-2.png",
+    "./test/speaking/2-2.png"
   ]
 }

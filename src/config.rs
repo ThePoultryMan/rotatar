@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use serde::Deserialize;
 
@@ -6,7 +6,8 @@ use serde::Deserialize;
 pub struct Config {
     screen_size: (i32, i32),
     sections: (i32, i32),
-    images: Vec<PathBuf>,
+    idle_images: Vec<PathBuf>,
+    speaking_images: Vec<PathBuf>,
 }
 
 impl Config {
@@ -18,8 +19,12 @@ impl Config {
         self.sections
     }
 
-    pub fn images(&self) -> Vec<PathBuf> {
-        self.images.clone()
+    pub fn idle_images(&self) -> &Vec<PathBuf> {
+        &self.idle_images
+    }
+
+    pub fn speaking_images(&self) -> &Vec<PathBuf> {
+        &self.speaking_images
     }
 
     pub fn total_sections(&self) -> usize {
@@ -27,6 +32,6 @@ impl Config {
     }
 
     pub fn image_count(&self) -> usize {
-        self.images.len()
+        self.idle_images.len()
     }
 }

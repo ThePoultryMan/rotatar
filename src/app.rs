@@ -16,7 +16,7 @@ use crate::{
 };
 
 pub struct App {
-    images: Vec<PathBuf>,
+    config: Config,
     current_image: usize,
     receiver: Arc<Receiver<Message>>,
     state: Arc<Mutex<State>>,
@@ -27,7 +27,7 @@ impl App {
         let screen_size = config.screen_size();
         let sections = config.sections();
         Self {
-            images: config.images(),
+            config,
             current_image: to_2d_index(sections.0 / 2, sections.1 / 2, sections.0),
             receiver: Arc::new(receiver),
             state: Arc::new(Mutex::new(State::new(screen_size, sections))),
@@ -54,16 +54,8 @@ impl App {
 
     pub fn view(&self) -> iced::Element<'_, Message> {
         if let Ok(state) = self.state.lock() {
-            let row = {
-                widget::row![widget::image(
-                    self.images.get(state.current_image()).unwrap()
-                )]
-            };
-            let column = widget::column![
-                widget::text(if state.speaking() { "speaking" } else { "" }),
-                row,
-            ];
-            widget::container(column)
+            let row = { widget::row![widget::image(self.get_current_image(&state))] };
+            widget::container(row)
                 .style(|_| {
                     widget::container::Style::default()
                         .background(Background::Color(Color::TRANSPARENT))
@@ -82,6 +74,20 @@ impl App {
             .width(iced::Length::Fill)
             .height(iced::Length::Fill)
             .into()
+        }
+    }
+
+    fn get_current_image(&self, state: &State) -> &PathBuf {
+        if state.speaking() {
+            self.config
+                .speaking_images()
+                .get(state.current_image())
+                .expect("There should be an image")
+        } else {
+            self.config
+                .idle_images()
+                .get(state.current_image())
+                .expect("There should be an image")
         }
     }
 
