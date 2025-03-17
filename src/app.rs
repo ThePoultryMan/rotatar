@@ -6,7 +6,7 @@ use std::{
 use async_channel::Receiver;
 use iced::{
     futures::{SinkExt, Stream},
-    stream, widget::{self, text}, Background, Color, Subscription,
+    stream, widget, Background, Color, Subscription,
 };
 
 use crate::{
@@ -43,30 +43,24 @@ impl App {
             }
             Message::Ready(sender) => {
                 let _ = sender.send_blocking(self.receiver.clone());
-            },
+            }
             Message::SpeakingStateChange(speaking) => {
                 if let Ok(mut state) = self.state.lock() {
                     state.set_speaking(speaking);
                 }
-            },
+            }
         }
     }
 
     pub fn view(&self) -> iced::Element<'_, Message> {
         if let Ok(state) = self.state.lock() {
-            let row =  {
+            let row = {
                 widget::row![widget::image(
                     self.images.get(state.current_image()).unwrap()
                 )]
             };
             let column = widget::column![
-                widget::text(
-                    if state.speaking() {
-                        "speaking"
-                    } else {
-                        ""
-                    }
-                ),
+                widget::text(if state.speaking() { "speaking" } else { "" }),
                 row,
             ];
             widget::container(column)
@@ -80,12 +74,14 @@ impl App {
                 .height(iced::Length::Fill)
                 .into()
         } else {
-            widget::container(widget::text("critical error encountered, restart pretty please."))
-                .center_x(iced::Length::Fill)
-                .center_y(iced::Length::Fill)
-                .width(iced::Length::Fill)
-                .height(iced::Length::Fill)
-                .into()
+            widget::container(widget::text(
+                "critical error encountered, restart pretty please.",
+            ))
+            .center_x(iced::Length::Fill)
+            .center_y(iced::Length::Fill)
+            .width(iced::Length::Fill)
+            .height(iced::Length::Fill)
+            .into()
         }
     }
 

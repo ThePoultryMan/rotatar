@@ -5,7 +5,6 @@ use audio::{AudioError, AudioHolder};
 use clap::Parser;
 use cli::Args;
 use config::Config;
-use cpal::traits::{HostTrait, StreamTrait};
 use iced::Task;
 use message::Message;
 use mouce::{Mouse, MouseActions};
@@ -61,7 +60,8 @@ async fn main() -> Result<(), Error> {
         let state = app.state();
         tokio::spawn(async move {
             let mouse = Mouse::new();
-            let audio_holder = AudioHolder::new(sender.clone()).expect("Failed to create AudioHolder");
+            let audio_holder =
+                AudioHolder::new(sender.clone()).expect("Failed to create AudioHolder");
             tokio::spawn(async move {
                 audio_holder.stream().await.unwrap();
             });

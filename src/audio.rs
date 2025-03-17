@@ -1,11 +1,11 @@
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
 use async_channel::Sender;
 use cpal::{
     traits::{DeviceTrait, HostTrait, StreamTrait},
     BuildStreamError, Device, PlayStreamError, SupportedStreamConfig, SupportedStreamConfigsError,
 };
-use rustfft::{num_complex::Complex, num_traits::Zero, FftPlanner};
+use rustfft::{num_complex::Complex, FftPlanner};
 use thiserror::Error;
 
 use crate::{message::Message, util::arctex};
@@ -48,7 +48,6 @@ impl AudioHolder {
         }
     }
 
-    // FIXME: Does not close when application is closed from the window.
     /// Creating and running the stream does not block the thread, due to cpal's behavior.
     pub async fn stream(self) -> Result<(), AudioError> {
         let sampling_rate = self.supported_config.sample_rate().0;
@@ -57,6 +56,7 @@ impl AudioHolder {
         let sensitivity = arctex!(0.0);
         let was_speaking = arctex!(false);
 
+        let moved_sender = self.sender.clone();
         match self.device.build_input_stream(
             &self.supported_config.config(),
             move |data: &[f32], _: &cpal::InputCallbackInfo| {
@@ -70,11 +70,8 @@ impl AudioHolder {
                     let fft = planner.plan_fft_inverse(data.len());
 
                     let mut buffer: Vec<Complex<f32>> = Vec::new();
-                    for i in 0..data.len() {
-                        buffer.push(Complex {
-                            re: data[i],
-                            im: 0.0,
-                        });
+                    for item in data {
+                        buffer.push(Complex { re: *item, im: 0.0 });
                     }
                     fft.process(&mut buffer);
 
@@ -82,8 +79,8 @@ impl AudioHolder {
                     let end = (20000.0 * buffer.len() as f32 / sampling_rate as f32) as usize;
 
                     let mut magnitudes = Vec::with_capacity(end - start);
-                    for i in start..end {
-                        magnitudes.push((buffer[i].norm_sqr() as f64).sqrt() as i32 + 1);
+                    for item in buffer.iter().take(end).skip(start) {
+                        magnitudes.push((item.norm_sqr() as f64).sqrt() as i32 + 1);
                     }
                     let max_magnitude = *magnitudes.iter().max().unwrap_or(&0);
 
@@ -95,7 +92,9 @@ impl AudioHolder {
 
                     let speaking = *sensitivity > 0.0;
                     if *was_speaking != speaking {
-                        self.sender.send_blocking(Message::SpeakingStateChange(speaking)).expect("Channel is closed, something terrible has happened.");
+                        // We can safely ignore this result because if the channel closes, the stream
+                        // will be dropped.
+                        let _ = moved_sender.send_blocking(Message::SpeakingStateChange(speaking));
                     }
                     *was_speaking = speaking;
                 }
@@ -107,7 +106,8 @@ impl AudioHolder {
         ) {
             Ok(stream) => {
                 stream.play()?;
-                loop {}
+                while !self.sender.is_closed() {}
+                Ok(())
             }
             Err(error) => Err(AudioError::BuildStreamError(error)),
         }
