@@ -3,9 +3,31 @@ macro_rules! arctex {
         std::sync::Arc::new(std::sync::Mutex::new($value))
     };
 }
+pub(crate) use arctex;
+
+macro_rules! interval {
+    ($duration:expr, $block:block) => {
+        let mut interval = tokio::time::interval($duration);
+        loop {
+            interval.tick().await;
+            $block
+        }
+    };
+    ($duration:expr, $break:expr, $block:block) => {
+        let mut interval = tokio::time::interval($duration);
+        loop {
+            interval.tick().await;
+            $block
+            if $break {
+                break;
+            }
+        }
+    };
+}
+pub(crate) use interval;
+
 use std::{num::ParseIntError, str::FromStr};
 
-pub(crate) use arctex;
 use thiserror::Error;
 
 #[derive(Debug, Error)]

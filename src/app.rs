@@ -5,15 +5,31 @@ use std::{
 
 use async_channel::Receiver;
 use iced::{
+    Background, Subscription,
     futures::{SinkExt, Stream},
-    stream, widget, Background, Subscription,
+    stream, widget,
 };
 
 use crate::{
     config::Config,
     message::Message,
-    state::{to_2d_index, State},
+    state::{State, to_2d_index},
 };
+
+macro_rules! audio_section {
+    ($state:expr) => {
+        widget::column![
+            {
+                if $state.has_audio_input() {
+                    widget::text!("Audio input connected")
+                } else {
+                    widget::text!("No audio input")
+                }
+            },
+            { widget::progress_bar(0.0..=1.0, $state.sensitivity()) }
+        ]
+    };
+}
 
 pub struct App {
     config: Config,
@@ -43,6 +59,11 @@ impl App {
                     self.current_image = state.current_image();
                 }
             }
+            Message::HasAudioInput(has_audio_input) => {
+                if let Ok(mut state) = self.state.lock() {
+                    state.set_audio_input(has_audio_input);
+                }
+            }
             Message::Ready(sender) => {
                 let _ = sender.send_blocking(self.receiver.clone());
             }
@@ -57,7 +78,7 @@ impl App {
     pub fn view(&self) -> iced::Element<'_, Message> {
         if let Ok(state) = self.state.lock() {
             let row = widget::row![widget::image(self.get_current_image(&state))];
-            let column = widget::column![row, widget::progress_bar(0.0..=1.0, state.sensitivity())];
+            let column = widget::column![row, audio_section!(state)];
             widget::center(column)
                 .style(|_| {
                     widget::container::Style::default()

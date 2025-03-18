@@ -1,14 +1,14 @@
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use async_channel::Sender;
 use cpal::{
-    traits::{DeviceTrait, HostTrait, StreamTrait},
     BuildStreamError, Device, PlayStreamError, SupportedStreamConfig, SupportedStreamConfigsError,
+    traits::{DeviceTrait, HostTrait, StreamTrait},
 };
-use rustfft::{num_complex::Complex, FftPlanner};
+use rustfft::{FftPlanner, num_complex::Complex};
 use thiserror::Error;
 
-use crate::{message::Message, util::arctex};
+use crate::{interval, message::Message, util::arctex};
 
 pub struct AudioHolder {
     device: Device,
@@ -31,7 +31,24 @@ pub enum AudioError {
 }
 
 impl AudioHolder {
-    pub fn new(sender: Sender<Message>) -> Result<Self, AudioError> {
+    pub async fn new(sender: Sender<Message>) -> Result<Self, AudioError> {
+        let mut tries_left = 500u16;
+        interval!(Duration::from_millis(50), {
+            if let Ok(audio_holder) = AudioHolder::setup(sender.clone()).await {
+                sender.send(Message::HasAudioInput(true)).await.unwrap();
+                return Ok(audio_holder);
+            } else {
+                tries_left -= 1;
+            }
+
+            if tries_left == 0 {
+                break;
+            }
+        });
+        Err(AudioError::NoInputDevice)
+    }
+
+    async fn setup(sender: Sender<Message>) -> Result<Self, AudioError> {
         if let Some(input_device) = cpal::default_host().default_input_device() {
             let mut supported_configs_range = input_device.supported_input_configs()?;
             if let Some(supported_config) = supported_configs_range.next() {
@@ -61,9 +78,11 @@ impl AudioHolder {
         match self.device.build_input_stream(
             &self.supported_config.config(),
             move |data: &[f32], _: &cpal::InputCallbackInfo| {
-                if let (Ok(mut last_time), Ok(mut sensitivity), Ok(mut last_sensitivity)) =
-                    (last_time.lock(), sensitivity.lock(), last_sensitivity.lock())
-                {
+                if let (Ok(mut last_time), Ok(mut sensitivity), Ok(mut last_sensitivity)) = (
+                    last_time.lock(),
+                    sensitivity.lock(),
+                    last_sensitivity.lock(),
+                ) {
                     // Get the time since the last call.
                     let delta = Instant::now().duration_since(*last_time).as_secs_f32();
                     *last_time = Instant::now();
@@ -100,7 +119,8 @@ impl AudioHolder {
                     if *last_sensitivity != *sensitivity {
                         // We can safely ignore this result because if the channel closes, the stream
                         // will be dropped.
-                        let _ = moved_sender.send_blocking(Message::SensitivityChanged(*sensitivity));
+                        let _ =
+                            moved_sender.send_blocking(Message::SensitivityChanged(*sensitivity));
                     }
                     *last_sensitivity = *sensitivity;
                 }

@@ -2,6 +2,7 @@
 pub struct State {
     current_image: usize,
     sensitivity: f32,
+    has_audio_input: bool,
 
     section_size: (i32, i32),
     x_sections: i32,
@@ -12,6 +13,7 @@ impl State {
         Self {
             current_image: 0,
             sensitivity: 0.0,
+            has_audio_input: false,
             section_size: (screen_size.0 / sections.0, screen_size.1 / sections.1),
             x_sections: sections.0,
         }
@@ -40,6 +42,14 @@ impl State {
 
     pub fn set_sensitivity(&mut self, sensitivity: f32) {
         self.sensitivity = sensitivity;
+    }
+
+    pub fn has_audio_input(&self) -> bool {
+        self.has_audio_input
+    }
+
+    pub fn set_audio_input(&mut self, has_audio_input: bool) {
+        self.has_audio_input = has_audio_input;
     }
 
     pub fn section_size(&self) -> (i32, i32) {

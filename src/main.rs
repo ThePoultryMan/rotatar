@@ -10,7 +10,7 @@ use message::Message;
 use mouce::{Mouse, MouseActions};
 use state::to_2d_index;
 use thiserror::Error;
-use tokio::time;
+use util::interval;
 
 mod app;
 mod audio;
@@ -43,15 +43,11 @@ async fn main() -> Result<(), Error> {
     if let Some(config_path) = args.config_path() {
         let config: Config = serde_json::from_str(&read_to_string(config_path)?)?;
         if config.image_count() < config.total_sections() {
-            return Err(
-                Error::InvalidConfig(
-                    format!(
-                        "You cannot have less images then you have sections. You only have {} images while you have {} sections",
-                        config.image_count(),
-                        config.total_sections()
-                    )
-                )
-            );
+            return Err(Error::InvalidConfig(format!(
+                "You cannot have less images then you have sections. You only have {} images while you have {} sections",
+                config.image_count(),
+                config.total_sections()
+            )));
         }
 
         let (sender, receiver) = async_channel::unbounded();
@@ -65,15 +61,15 @@ async fn main() -> Result<(), Error> {
         let state = app.state();
         tokio::spawn(async move {
             let mouse = Mouse::new();
-            let audio_holder =
-                AudioHolder::new(sender.clone()).expect("Failed to create AudioHolder");
+            let audio_sender = sender.clone();
             tokio::spawn(async move {
+                let audio_holder = AudioHolder::new(audio_sender.clone())
+                    .await
+                    .expect("Failed to create AudioHolder");
                 audio_holder.stream().await.unwrap();
             });
 
-            let mut interval = time::interval(Duration::from_millis(100));
-            loop {
-                interval.tick().await;
+            interval!(Duration::from_millis(100), {
                 if let Ok(mouse_position) = mouse.get_position() {
                     let mut message_to_send = None;
                     match state.lock() {
@@ -96,7 +92,7 @@ async fn main() -> Result<(), Error> {
                         let _ = sender.send(message_to_send).await;
                     }
                 }
-            }
+            });
         });
 
         iced::application("rotatar", App::update, App::view)
