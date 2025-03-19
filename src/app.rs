@@ -59,9 +59,7 @@ impl App {
                 let _ = sender.send_blocking(self.receiver.clone());
             }
             Message::SensitivityChanged(sensitivity) => {
-                if let Ok(mut state) = self.state.lock() {
-                    state.set_sensitivity(sensitivity);
-                }
+                set_state!(self.state, set_sensitivity, sensitivity);
             }
             _ => {}
         }
