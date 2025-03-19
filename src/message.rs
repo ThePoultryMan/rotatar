@@ -2,10 +2,12 @@ use std::sync::Arc;
 
 use async_channel::{Receiver, Sender};
 
+use crate::audio::AudioStatus;
+
 #[derive(Debug, Clone)]
 pub enum Message {
     Ready(Sender<Arc<Receiver<Message>>>),
-    HasAudioInput(bool),
+    AudioStatus(AudioStatus),
     CurrentImageChanged,
     SensitivityChanged(f32),
 }

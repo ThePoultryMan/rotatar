@@ -13,14 +13,14 @@ use iced::{
 use crate::{
     config::Config,
     message::Message,
-    state::{State, to_2d_index},
+    state::{State, set_state},
 };
 
 macro_rules! audio_section {
     ($state:expr) => {
         widget::column![
             {
-                if $state.has_audio_input() {
+                if $state.audio_status() == crate::audio::AudioStatus::Ready {
                     widget::text!("Audio input connected")
                 } else {
                     widget::text!("No audio input")
@@ -33,7 +33,6 @@ macro_rules! audio_section {
 
 pub struct App {
     config: Config,
-    current_image: usize,
     receiver: Arc<Receiver<Message>>,
     state: Arc<Mutex<State>>,
     background_color: iced::Color,
@@ -45,7 +44,6 @@ impl App {
         let sections = config.sections();
         Self {
             config,
-            current_image: to_2d_index(sections.0 / 2, sections.1 / 2, sections.0),
             receiver: Arc::new(receiver),
             state: Arc::new(Mutex::new(State::new(screen_size, sections))),
             background_color,
@@ -54,15 +52,8 @@ impl App {
 
     pub fn update(&mut self, message: Message) {
         match message {
-            Message::CurrentImageChanged => {
-                if let Ok(state) = self.state.lock() {
-                    self.current_image = state.current_image();
-                }
-            }
-            Message::HasAudioInput(has_audio_input) => {
-                if let Ok(mut state) = self.state.lock() {
-                    state.set_audio_input(has_audio_input);
-                }
+            Message::AudioStatus(audio_status) => {
+                set_state!(self.state, set_audio_status, audio_status);
             }
             Message::Ready(sender) => {
                 let _ = sender.send_blocking(self.receiver.clone());
@@ -72,6 +63,7 @@ impl App {
                     state.set_sensitivity(sensitivity);
                 }
             }
+            _ => {}
         }
     }
 

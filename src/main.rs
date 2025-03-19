@@ -76,11 +76,13 @@ async fn main() -> Result<(), Error> {
                         Ok(mut state) => {
                             let (section_size, x_sections) =
                                 (state.section_size(), state.x_sections());
-                            if state.set_current_image(to_2d_index(
+                            let new_image = to_2d_index(
                                 mouse_position.0 / section_size.0,
                                 mouse_position.1 / section_size.1,
                                 x_sections,
-                            )) {
+                            );
+                            if state.current_image() != new_image {
+                                state.set_current_image(new_image);
                                 message_to_send = Some(Message::CurrentImageChanged);
                             }
                         }

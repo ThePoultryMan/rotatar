@@ -13,16 +13,6 @@ macro_rules! interval {
             $block
         }
     };
-    ($duration:expr, $break:expr, $block:block) => {
-        let mut interval = tokio::time::interval($duration);
-        loop {
-            interval.tick().await;
-            $block
-            if $break {
-                break;
-            }
-        }
-    };
 }
 pub(crate) use interval;
 

@@ -30,12 +30,21 @@ pub enum AudioError {
     PlayStreamError(#[from] PlayStreamError),
 }
 
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum AudioStatus {
+    Ready,
+    Closed,
+}
+
 impl AudioHolder {
     pub async fn new(sender: Sender<Message>) -> Result<Self, AudioError> {
         let mut tries_left = 500u16;
         interval!(Duration::from_millis(50), {
             if let Ok(audio_holder) = AudioHolder::setup(sender.clone()).await {
-                sender.send(Message::HasAudioInput(true)).await.unwrap();
+                sender
+                    .send(Message::AudioStatus(AudioStatus::Ready))
+                    .await
+                    .unwrap();
                 return Ok(audio_holder);
             } else {
                 tries_left -= 1;
@@ -74,7 +83,8 @@ impl AudioHolder {
         let sensitivity = arctex!(0.0);
         let last_sensitivity = arctex!(0.0);
 
-        let moved_sender = self.sender.clone();
+        let data_callback_sender = self.sender.clone();
+        let error_callback_sender = self.sender.clone();
         match self.device.build_input_stream(
             &self.supported_config.config(),
             move |data: &[f32], _: &cpal::InputCallbackInfo| {
@@ -119,14 +129,16 @@ impl AudioHolder {
                     if *last_sensitivity != *sensitivity {
                         // We can safely ignore this result because if the channel closes, the stream
                         // will be dropped.
-                        let _ =
-                            moved_sender.send_blocking(Message::SensitivityChanged(*sensitivity));
+                        let _ = data_callback_sender
+                            .send_blocking(Message::SensitivityChanged(*sensitivity));
                     }
                     *last_sensitivity = *sensitivity;
                 }
             },
-            move |error| {
-                panic!("{:#?}", error);
+            move |_| {
+                let _ = error_callback_sender.send_blocking(Message::SensitivityChanged(0.0));
+                let _ =
+                    error_callback_sender.send_blocking(Message::AudioStatus(AudioStatus::Closed));
             },
             None,
         ) {

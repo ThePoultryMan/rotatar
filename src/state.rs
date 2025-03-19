@@ -1,8 +1,20 @@
+use crate::audio::AudioStatus;
+
+/// Generates boiler plate for locking the mutex before setting state.
+macro_rules! set_state {
+    ($state:expr, $field:tt, $value:expr) => {
+        if let Ok(mut state) = $state.lock() {
+            state.$field($value);
+        }
+    };
+}
+pub(crate) use set_state;
+
 #[derive(Clone, Copy)]
 pub struct State {
     current_image: usize,
     sensitivity: f32,
-    has_audio_input: bool,
+    audio_status: AudioStatus,
 
     section_size: (i32, i32),
     x_sections: i32,
@@ -13,7 +25,7 @@ impl State {
         Self {
             current_image: 0,
             sensitivity: 0.0,
-            has_audio_input: false,
+            audio_status: AudioStatus::Closed,
             section_size: (screen_size.0 / sections.0, screen_size.1 / sections.1),
             x_sections: sections.0,
         }
@@ -44,12 +56,12 @@ impl State {
         self.sensitivity = sensitivity;
     }
 
-    pub fn has_audio_input(&self) -> bool {
-        self.has_audio_input
+    pub fn audio_status(&self) -> AudioStatus {
+        self.audio_status
     }
 
-    pub fn set_audio_input(&mut self, has_audio_input: bool) {
-        self.has_audio_input = has_audio_input;
+    pub fn set_audio_status(&mut self, audio_status: AudioStatus) {
+        self.audio_status = audio_status;
     }
 
     pub fn section_size(&self) -> (i32, i32) {
