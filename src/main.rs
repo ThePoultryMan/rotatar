@@ -1,7 +1,8 @@
 use std::{fs::read_to_string, io, time::Duration};
 
 use app::App;
-use audio::{AudioError, AudioHolder};
+use audio::AudioHandler;
+// use audio::{AudioError, AudioHolder};
 use clap::Parser;
 use cli::Args;
 use config::Config;
@@ -26,8 +27,8 @@ enum Error {
     NoConfig,
     #[error("Configuration file is invalid: `{0}`")]
     InvalidConfig(String),
-    #[error("An error occurred while attempting to use audio")]
-    Audio(#[from] AudioError),
+    // #[error("An error occurred while attempting to use audio")]
+    // Audio(#[from] AudioError),
     #[error("I/O Error")]
     IO(#[from] io::Error),
     #[error("Could not parse config file")]
@@ -51,6 +52,7 @@ async fn main() -> Result<(), Error> {
         }
 
         let (sender, receiver) = async_channel::unbounded();
+        let cloned_sender = sender.clone();
         let background_color = if let Some(background_color) = args.background_color() {
             background_color.into()
         } else {
@@ -61,13 +63,6 @@ async fn main() -> Result<(), Error> {
         let state = app.state();
         tokio::spawn(async move {
             let mouse = Mouse::new();
-            let audio_sender = sender.clone();
-            tokio::spawn(async move {
-                let audio_holder = AudioHolder::new(audio_sender.clone())
-                    .await
-                    .expect("Failed to create AudioHolder");
-                audio_holder.stream().await.unwrap();
-            });
 
             interval!(Duration::from_millis(100), {
                 if let Ok(mouse_position) = mouse.get_position() {
@@ -97,6 +92,11 @@ async fn main() -> Result<(), Error> {
             });
         });
 
+        let _ = cloned_sender
+            .send(Message::SetupAudio(AudioHandler::new(
+                cloned_sender.clone(),
+            )))
+            .await;
         iced::application("rotatar", App::update, App::view)
             .transparent(true)
             .subscription(App::subscription)

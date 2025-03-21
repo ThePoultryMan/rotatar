@@ -1,4 +1,4 @@
-use crate::audio::AudioStatus;
+// use crate::audio::AudioStatus;
 
 /// Generates boiler plate for locking the mutex before setting state.
 macro_rules! set_state {
@@ -7,10 +7,18 @@ macro_rules! set_state {
             state.$method($value);
         }
     };
+    ($state:expr, $method:tt, $value:expr, $other:block) => {
+        if let Ok(mut state) = $state.lock() {
+            $other
+            state.$method($value);
+        }
+    };
 }
 pub(crate) use set_state;
 
-#[derive(Clone, Copy)]
+use crate::audio::AudioStatus;
+
+#[derive(Clone)]
 pub struct State {
     current_image: usize,
     sensitivity: f32,
@@ -56,8 +64,8 @@ impl State {
         self.sensitivity = sensitivity;
     }
 
-    pub fn audio_status(&self) -> AudioStatus {
-        self.audio_status
+    pub fn audio_status(&self) -> &AudioStatus {
+        &self.audio_status
     }
 
     pub fn set_audio_status(&mut self, audio_status: AudioStatus) {

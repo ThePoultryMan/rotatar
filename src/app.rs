@@ -1,16 +1,19 @@
 use std::{
     path::PathBuf,
     sync::{Arc, Mutex},
+    thread,
+    time::Duration,
 };
 
 use async_channel::Receiver;
 use iced::{
-    Background, Subscription,
+    Background, Subscription, Task,
     futures::{SinkExt, Stream},
     stream, widget,
 };
 
 use crate::{
+    audio::{AudioHandler, AudioResult, AudioStatus},
     config::Config,
     message::Message,
     state::{State, set_state},
@@ -20,7 +23,7 @@ macro_rules! audio_section {
     ($state:expr) => {
         widget::column![
             {
-                if $state.audio_status() == crate::audio::AudioStatus::Ready {
+                if *$state.audio_status() == AudioStatus::Ready {
                     widget::text!("Audio input connected")
                 } else {
                     widget::text!("No audio input")
@@ -50,12 +53,22 @@ impl App {
         }
     }
 
-    pub fn update(&mut self, message: Message) {
+    pub fn update(&mut self, message: Message) -> Task<Message> {
         match message {
-            Message::AudioStatus(audio_status) => {
-                set_state!(self.state, set_audio_status, audio_status);
+            Message::SetupAudio(mut audio_handler) => {
+                audio_handler.update_input_devices();
+                return Task::future(handle_audio(audio_handler));
             }
-            Message::Ready(sender) => {
+            Message::UpdateAudioStatus(audio_status) => {
+                if let AudioStatus::Polling { audio_handler } = audio_status {
+                    if let Some(audio_handler) = audio_handler {
+                        return Task::future(wait_for_audio(audio_handler));
+                    }
+                } else {
+                    set_state!(self.state, set_audio_status, audio_status);
+                }
+            }
+            Message::OutsideListenerReady(sender) => {
                 let _ = sender.send_blocking(self.receiver.clone());
             }
             Message::SensitivityChanged(sensitivity) => {
@@ -63,6 +76,7 @@ impl App {
             }
             _ => {}
         }
+        Task::none()
     }
 
     pub fn view(&self) -> iced::Element<'_, Message> {
@@ -104,7 +118,9 @@ impl App {
     fn state_updater() -> impl Stream<Item = Message> {
         stream::channel(100, |mut output| async move {
             let (sender, receiver) = async_channel::unbounded();
-            let _ = output.send(Message::Ready(sender.clone())).await;
+            let _ = output
+                .send(Message::OutsideListenerReady(sender.clone()))
+                .await;
             let outside_receiver = receiver.recv().await.expect("Receiving error");
 
             loop {
@@ -123,4 +139,36 @@ impl App {
     pub fn state(&self) -> Arc<Mutex<State>> {
         self.state.clone()
     }
+}
+
+async fn handle_audio(mut audio_handler: AudioHandler) -> Message {
+    if audio_handler.set_current_input_device(0) {
+        let result = audio_handler.play().await;
+        // AudioResult::Closed is the only time that everything is ok.
+        if result.result() == AudioResult::Closed
+            || result.result() == AudioResult::DeviceNotAvailable
+        {
+            let audio_handler = result.audio_handler();
+            let _ = audio_handler
+                .sender()
+                .send(Message::UpdateAudioStatus(AudioStatus::Closed))
+                .await;
+            Message::SetupAudio(audio_handler)
+        } else {
+            panic!(
+                "AudioResult with unhandled error occurred:\n{}",
+                result.result()
+            );
+        }
+    } else {
+        Message::UpdateAudioStatus(AudioStatus::Polling {
+            audio_handler: Some(audio_handler),
+        })
+    }
+}
+
+async fn wait_for_audio(mut audio_handler: AudioHandler) -> Message {
+    thread::sleep(Duration::from_millis(75));
+    audio_handler.update_input_devices();
+    handle_audio(audio_handler).await
 }
