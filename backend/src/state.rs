@@ -1,6 +1,7 @@
 // use crate::audio::AudioStatus;
 
 /// Generates boiler plate for locking the mutex before setting state.
+#[macro_export]
 macro_rules! set_state {
     ($state:expr, $method:tt, $value:expr) => {
         if let Ok(mut state) = $state.lock() {
@@ -14,7 +15,6 @@ macro_rules! set_state {
         }
     };
 }
-pub(crate) use set_state;
 
 use crate::audio::AudioStatus;
 

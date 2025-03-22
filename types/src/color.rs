@@ -1,21 +1,3 @@
-macro_rules! arctex {
-    ($value:expr) => {
-        std::sync::Arc::new(std::sync::Mutex::new($value))
-    };
-}
-pub(crate) use arctex;
-
-macro_rules! interval {
-    ($duration:expr, $block:block) => {
-        let mut interval = tokio::time::interval($duration);
-        loop {
-            interval.tick().await;
-            $block
-        }
-    };
-}
-pub(crate) use interval;
-
 use std::{num::ParseIntError, str::FromStr};
 
 use thiserror::Error;
@@ -33,6 +15,20 @@ pub struct Color {
     r: u8,
     g: u8,
     b: u8,
+}
+
+impl Color {
+    pub fn r(&self) -> u8 {
+        self.r
+    }
+
+    pub fn g(&self) -> u8 {
+        self.g
+    }
+
+    pub fn b(&self) -> u8 {
+        self.b
+    }
 }
 
 impl FromStr for Color {
@@ -58,17 +54,6 @@ impl From<(u8, u8, u8)> for Color {
             r: value.0,
             g: value.1,
             b: value.2,
-        }
-    }
-}
-
-impl From<Color> for iced::Color {
-    fn from(value: Color) -> Self {
-        iced::Color {
-            r: value.r as f32 / 255.0,
-            g: value.g as f32 / 255.0,
-            b: value.b as f32 / 255.0,
-            a: 1.0,
         }
     }
 }

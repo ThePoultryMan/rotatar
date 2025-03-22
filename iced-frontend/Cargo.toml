@@ -1,0 +1,11 @@
+[package]
+name = "iced-frontend"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+async-channel = "2.3.1"
+iced = { version = "0.13.1", features = ["image"] }
+rotatar-backend.workspace = true
+rotatar-types.workspace = true
+tokio.workspace = true

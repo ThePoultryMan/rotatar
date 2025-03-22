@@ -11,13 +11,8 @@ use iced::{
     futures::{SinkExt, Stream},
     stream, widget,
 };
-
-use crate::{
-    audio::{AudioHandler, AudioResult, AudioStatus},
-    config::Config,
-    message::Message,
-    state::{State, set_state},
-};
+use rotatar_backend::{AudioHandler, AudioResult, AudioStatus, Message, State, set_state};
+use rotatar_types::Config;
 
 macro_rules! audio_section {
     ($state:expr) => {

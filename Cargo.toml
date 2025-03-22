@@ -1,23 +1,10 @@
-[package]
-name = "rotatar"
-version = "0.1.0"
-edition = "2024"
-authors = ["ThePoultryMan"]
-license = "LGLP-3.0-only"
+[workspace]
+members = [ "app","backend", "iced-frontend", "types"]
+resolver = "3"
 
-[dependencies]
-async-channel = "2.3.1"
+[workspace.dependencies]
 clap = { version = "4.5.32", features = ["derive"] }
-cpal = "0.15.3"
-iced = { version = "0.13.1", features = ["image"] }
-mouce = "0.2.51"
-rustfft = "6.2.0"
-serde = { version = "1.0.219", features = ["derive"] }
-serde_json = "1.0.140"
 thiserror = "2.0.12"
-tokio = { version = "1.44.1", features = [
-    "macros",
-    "rt",
-    "rt-multi-thread",
-    "time",
-] }
+tokio = "1.44.1"
+rotatar-types = {path = "./types"}
+rotatar-backend = { path = "./backend" }
