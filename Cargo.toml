@@ -1,10 +1,17 @@
 [workspace]
-members = [ "app","backend", "iced-frontend", "types"]
+members = [
+    "app",
+    "backend",
+    "iced-frontend",
+    "tauri-frontend/src-tauri",
+    "types",
+]
 resolver = "3"
 
 [workspace.dependencies]
+async-channel = "2.3.1"
 clap = { version = "4.5.32", features = ["derive"] }
 thiserror = "2.0.12"
 tokio = "1.44.1"
-rotatar-types = {path = "./types"}
+rotatar-types = { path = "./types" }
 rotatar-backend = { path = "./backend" }

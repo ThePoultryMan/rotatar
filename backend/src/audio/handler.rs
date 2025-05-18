@@ -7,7 +7,7 @@ use cpal::{
 };
 use rustfft::{FftPlanner, num_complex::Complex};
 
-use crate::{message::Message, util::arctex};
+use crate::{arctex, message::Message};
 
 use super::{AudioHandlerResult, AudioStatus, error::AudioResult};
 

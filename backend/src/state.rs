@@ -16,6 +16,8 @@ macro_rules! set_state {
     };
 }
 
+use rotatar_types::TwoInts;
+
 use crate::audio::AudioStatus;
 
 #[derive(Clone)]
@@ -29,14 +31,16 @@ pub struct State {
 }
 
 impl State {
-    pub fn new(screen_size: (i32, i32), sections: (i32, i32)) -> Self {
-        Self {
+    pub fn new(screen_size: TwoInts, sections: (i32, i32)) -> Self {
+        let mut state = Self {
             current_image: 0,
             sensitivity: 0.0,
             audio_status: AudioStatus::Closed,
-            section_size: (screen_size.0 / sections.0, screen_size.1 / sections.1),
+            section_size: (screen_size.x() / sections.0, screen_size.y() / sections.1),
             x_sections: sections.0,
-        }
+        };
+        state.set_current_image_xy(state.section_size().0 / 2, state.section_size().1 / 2);
+        state
     }
 
     pub fn current_image(&self) -> usize {
@@ -54,6 +58,15 @@ impl State {
         } else {
             false
         }
+    }
+
+    pub fn set_current_image_xy(&mut self, x: i32, y: i32) -> bool {
+        let new_image = to_2d_index(
+            x / self.section_size.0,
+            y / self.section_size.1,
+            self.x_sections,
+        );
+        self.set_current_image(new_image)
     }
 
     pub fn sensitivity(&self) -> f32 {
@@ -85,6 +98,6 @@ impl State {
     }
 }
 
-pub fn to_2d_index(x: i32, y: i32, width: i32) -> usize {
+fn to_2d_index(x: i32, y: i32, width: i32) -> usize {
     (y * width + x) as usize
 }

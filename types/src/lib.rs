@@ -3,6 +3,7 @@ pub use color::Color;
 pub use config::Config;
 pub use error::FrontendError;
 pub use frontend::Frontend;
+pub use numbers::TwoInts;
 
 pub use clap::Parser;
 
@@ -11,3 +12,4 @@ mod color;
 mod config;
 mod error;
 mod frontend;
+mod numbers;

@@ -2,19 +2,23 @@ use std::path::PathBuf;
 
 use serde::Deserialize;
 
-#[derive(Deserialize)]
+use crate::TwoInts;
+
+#[derive(Clone, Deserialize)]
 pub struct Config {
-    screen_size: (i32, i32),
     sections: (i32, i32),
     idle_images: Vec<PathBuf>,
     speaking_images: Vec<PathBuf>,
+    screen_information: ScreenInformation,
+}
+
+#[derive(Clone, Copy, Deserialize)]
+pub struct ScreenInformation {
+    size: TwoInts,
+    modifiers: TwoInts,
 }
 
 impl Config {
-    pub fn screen_size(&self) -> (i32, i32) {
-        self.screen_size
-    }
-
     pub fn sections(&self) -> (i32, i32) {
         self.sections
     }
@@ -33,5 +37,19 @@ impl Config {
 
     pub fn image_count(&self) -> usize {
         self.idle_images.len()
+    }
+
+    pub fn screen_information(&self) -> ScreenInformation {
+        self.screen_information
+    }
+}
+
+impl ScreenInformation {
+    pub fn size(&self) -> TwoInts {
+        self.size
+    }
+
+    pub fn modifiers(&self) -> TwoInts {
+        self.modifiers
     }
 }

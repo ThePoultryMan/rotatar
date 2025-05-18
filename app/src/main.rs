@@ -18,6 +18,7 @@ async fn main() -> Result<(), AppError> {
     let config = rotatar_backend::run(&args).await?;
     match args.frontend() {
         rotatar_types::Frontend::Iced => iced_frontend::run(args, config).await?,
+        rotatar_types::Frontend::Tauri => tauri_frontend::run(config),
     }
 
     Ok(())

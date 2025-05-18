@@ -1,10 +1,14 @@
 [package]
-name = "rotator"
+name = "rotatar"
 version = "0.1.0"
 edition = "2024"
 
+[features]
+release = ["tauri-frontend/release"]
+
 [dependencies]
 iced-frontend = { path = "../iced-frontend" }
+tauri-frontend = { path = "../tauri-frontend/src-tauri" }
 rotatar-backend = { path = "../backend" }
 rotatar-types.workspace = true
 thiserror.workspace = true

@@ -1,16 +1,16 @@
 use std::time::Duration;
 use std::{fs::read_to_string, io};
 
+use async_channel::Receiver;
 use mouce::{Mouse, MouseActions};
-use rotatar_types::Config;
+use rotatar_types::{Config, TwoInts};
 use rotatar_types::{FrontendError, ValidArgs};
 use thiserror::Error;
 
-pub use audio::{AudioHandler, AudioResult, AudioStatus};
 pub use message::Message;
-pub use state::{State, to_2d_index};
+pub use state::State;
 
-mod audio;
+pub mod audio;
 mod message;
 mod state;
 mod util;
@@ -44,11 +44,19 @@ pub async fn run(args: &ValidArgs) -> Result<Config, Error> {
     Ok(config)
 }
 
-pub async fn get_mouse_pos(interval: Duration, callback: impl AsyncFn((i32, i32)) -> ()) {
-    let mouse = Mouse::new();
-    interval!(interval, {
-        if let Ok(mouse_position) = mouse.get_position() {
-            callback(mouse_position).await;
-        }
+pub async fn get_mouse_pos(interval: Duration, modifiers: TwoInts) -> Receiver<TwoInts> {
+    let (sender, out_receiver) = async_channel::unbounded();
+
+    tokio::spawn(async move {
+        let mouse = Mouse::new();
+        interval!(interval, {
+            if let Ok(position) = mouse.get_position() {
+                sender
+                    .send(TwoInts::from(position) + modifiers)
+                    .await
+                    .unwrap();
+            }
+        });
     });
+    out_receiver
 }

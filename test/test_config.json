@@ -1,5 +1,4 @@
 {
-  "screen_size": [1920, 1080],
   "sections": [3, 3],
   "idle_images": [
     "./test/idle/0-0.png",
@@ -22,5 +21,9 @@
     "./test/speaking/0-2.png",
     "./test/speaking/1-2.png",
     "./test/speaking/2-2.png"
-  ]
+  ],
+  "screen_information": {
+    "size": [1920, 1080],
+    "modifiers": [-1920, 0]
+  }
 }

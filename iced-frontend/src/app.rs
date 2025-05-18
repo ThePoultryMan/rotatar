@@ -1,8 +1,6 @@
 use std::{
     path::PathBuf,
     sync::{Arc, Mutex},
-    thread,
-    time::Duration,
 };
 
 use async_channel::Receiver;
@@ -11,7 +9,11 @@ use iced::{
     futures::{SinkExt, Stream},
     stream, widget,
 };
-use rotatar_backend::{AudioHandler, AudioResult, AudioStatus, Message, State, set_state};
+use rotatar_backend::{
+    Message, State, arctex,
+    audio::{self, AudioStatus},
+    set_state,
+};
 use rotatar_types::Config;
 
 macro_rules! audio_section {
@@ -30,7 +32,7 @@ macro_rules! audio_section {
 }
 
 pub struct App {
-    config: Config,
+    config: Arc<Mutex<Config>>,
     receiver: Arc<Receiver<Message>>,
     state: Arc<Mutex<State>>,
     background_color: iced::Color,
@@ -38,12 +40,12 @@ pub struct App {
 
 impl App {
     pub fn new(config: Config, background_color: iced::Color, receiver: Receiver<Message>) -> Self {
-        let screen_size = config.screen_size();
+        let screen_size = config.screen_information().size();
         let sections = config.sections();
         Self {
-            config,
+            config: arctex!(config),
             receiver: Arc::new(receiver),
-            state: Arc::new(Mutex::new(State::new(screen_size, sections))),
+            state: arctex!(State::new(screen_size, sections)),
             background_color,
         }
     }
@@ -52,12 +54,12 @@ impl App {
         match message {
             Message::SetupAudio(mut audio_handler) => {
                 audio_handler.update_input_devices();
-                return Task::future(handle_audio(audio_handler));
+                return Task::future(audio::handle_audio(audio_handler));
             }
             Message::UpdateAudioStatus(audio_status) => {
                 if let AudioStatus::Polling { audio_handler } = audio_status {
                     if let Some(audio_handler) = audio_handler {
-                        return Task::future(wait_for_audio(audio_handler));
+                        return Task::future(audio::wait_for_audio(audio_handler));
                     }
                 } else {
                     set_state!(self.state, set_audio_status, audio_status);
@@ -96,17 +98,28 @@ impl App {
         }
     }
 
-    fn get_current_image(&self, state: &State) -> &PathBuf {
-        if state.is_speaking() {
-            self.config
-                .speaking_images()
-                .get(state.current_image())
-                .expect("There should be an image")
-        } else {
-            self.config
-                .idle_images()
-                .get(state.current_image())
-                .expect("There should be an image")
+    pub fn config(&self) -> Arc<Mutex<Config>> {
+        self.config.clone()
+    }
+
+    fn get_current_image(&self, state: &State) -> PathBuf {
+        match self.config.lock() {
+            Ok(config) => {
+                if state.is_speaking() {
+                    config
+                        .speaking_images()
+                        .get(state.current_image())
+                        .expect("There should be an image")
+                        .clone()
+                } else {
+                    config
+                        .idle_images()
+                        .get(state.current_image())
+                        .expect("There should be an image")
+                        .clone()
+                }
+            }
+            Err(error) => todo!("{error}"),
         }
     }
 
@@ -134,36 +147,4 @@ impl App {
     pub fn state(&self) -> Arc<Mutex<State>> {
         self.state.clone()
     }
-}
-
-async fn handle_audio(mut audio_handler: AudioHandler) -> Message {
-    if audio_handler.set_current_input_device(0) {
-        let result = audio_handler.play().await;
-        // AudioResult::Closed is the only time that everything is ok.
-        if result.result() == AudioResult::Closed
-            || result.result() == AudioResult::DeviceNotAvailable
-        {
-            let audio_handler = result.audio_handler();
-            let _ = audio_handler
-                .sender()
-                .send(Message::UpdateAudioStatus(AudioStatus::Closed))
-                .await;
-            Message::SetupAudio(audio_handler)
-        } else {
-            panic!(
-                "AudioResult with unhandled error occurred:\n{}",
-                result.result()
-            );
-        }
-    } else {
-        Message::UpdateAudioStatus(AudioStatus::Polling {
-            audio_handler: Some(audio_handler),
-        })
-    }
-}
-
-async fn wait_for_audio(mut audio_handler: AudioHandler) -> Message {
-    thread::sleep(Duration::from_millis(75));
-    audio_handler.update_input_devices();
-    handle_audio(audio_handler).await
 }

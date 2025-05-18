@@ -2,8 +2,8 @@ use std::time::Duration;
 
 use app::App;
 use iced::Task;
-use rotatar_backend::{AudioHandler, Message, to_2d_index};
-use rotatar_types::{Config, FrontendError, ValidArgs};
+use rotatar_backend::{Message, audio::AudioHandler};
+use rotatar_types::{Config, FrontendError, TwoInts, ValidArgs};
 use util::ToIcedColor;
 
 mod app;
@@ -20,31 +20,30 @@ pub async fn run(args: ValidArgs, config: Config) -> Result<(), FrontendError> {
     let app = App::new(config, background_color, receiver);
 
     let state = app.state();
+    let managed_config = app.config();
     tokio::spawn(async move {
-        rotatar_backend::get_mouse_pos(Duration::from_millis(100), async move |mouse_position| {
-            let mut message_to_send = None;
-            match state.lock() {
-                Ok(mut state) => {
-                    let (section_size, x_sections) = (state.section_size(), state.x_sections());
-                    let new_image = to_2d_index(
-                        mouse_position.0 / section_size.0,
-                        mouse_position.1 / section_size.1,
-                        x_sections,
-                    );
-                    if state.current_image() != new_image {
-                        state.set_current_image(new_image);
-                        message_to_send = Some(Message::CurrentImageChanged);
+        let modifiers = if let Ok(config) = managed_config.lock() {
+            config.screen_information().modifiers()
+        } else {
+            TwoInts::new(0, 0)
+        };
+        let receiver = rotatar_backend::get_mouse_pos(Duration::from_millis(100), modifiers).await;
+        loop {
+            if let Ok(position) = receiver.recv().await {
+                let mut message_to_send = None;
+                match state.lock() {
+                    Ok(mut state) => {
+                        if state.set_current_image_xy(position.x(), position.y()) {
+                            message_to_send = Some(Message::CurrentImageChanged);
+                        }
                     }
+                    Err(error) => todo!("{error}"),
                 }
-                Err(error) => {
-                    todo!("{error}")
+                if let Some(message_to_send) = message_to_send {
+                    sender.send(message_to_send).await.unwrap();
                 }
             }
-            if let Some(message_to_send) = message_to_send {
-                let _ = sender.send(message_to_send).await;
-            }
-        })
-        .await;
+        }
     });
 
     let _ = cloned_sender
