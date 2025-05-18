@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::{collections::HashMap, path::PathBuf};
 
 use serde::Deserialize;
 
@@ -12,10 +12,10 @@ pub struct Config {
     screen_information: ScreenInformation,
 }
 
-#[derive(Clone, Copy, Deserialize)]
+#[derive(Clone, Deserialize)]
 pub struct ScreenInformation {
     size: TwoInts,
-    modifiers: TwoInts,
+    modifiers: HashMap<String, TwoInts>,
 }
 
 impl Config {
@@ -39,8 +39,8 @@ impl Config {
         self.idle_images.len()
     }
 
-    pub fn screen_information(&self) -> ScreenInformation {
-        self.screen_information
+    pub fn screen_information(&self) -> &ScreenInformation {
+        &self.screen_information
     }
 }
 
@@ -49,7 +49,7 @@ impl ScreenInformation {
         self.size
     }
 
-    pub fn modifiers(&self) -> TwoInts {
-        self.modifiers
+    pub fn modifier(&self, os: &str) -> TwoInts {
+        *self.modifiers.get(os).unwrap_or(&TwoInts::default())
     }
 }

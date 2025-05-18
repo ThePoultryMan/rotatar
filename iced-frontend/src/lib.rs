@@ -1,4 +1,4 @@
-use std::time::Duration;
+use std::{env, time::Duration};
 
 use app::App;
 use iced::Task;
@@ -23,7 +23,7 @@ pub async fn run(args: ValidArgs, config: Config) -> Result<(), FrontendError> {
     let managed_config = app.config();
     tokio::spawn(async move {
         let modifiers = if let Ok(config) = managed_config.lock() {
-            config.screen_information().modifiers()
+            config.screen_information().modifier(env::consts::OS)
         } else {
             TwoInts::new(0, 0)
         };

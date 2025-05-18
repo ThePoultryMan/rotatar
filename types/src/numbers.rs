@@ -2,7 +2,7 @@ use std::ops::Add;
 
 use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Copy, Serialize, Deserialize)]
+#[derive(Clone, Copy, Default, Serialize, Deserialize)]
 #[serde(from = "(i32, i32)", into = "(i32, i32)")]
 pub struct TwoInts {
     x: i32,

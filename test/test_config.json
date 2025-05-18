@@ -24,6 +24,8 @@
   ],
   "screen_information": {
     "size": [1920, 1080],
-    "modifiers": [-1920, 0]
+    "modifiers": {
+      "linux": [-1920, 0]
+    }
   }
 }

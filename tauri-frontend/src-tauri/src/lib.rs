@@ -1,4 +1,4 @@
-use std::{sync::Mutex, time::Duration};
+use std::{env, sync::Mutex, time::Duration};
 
 use async_channel::Sender;
 use rotatar_backend::{
@@ -62,7 +62,7 @@ pub fn run(config: Config) {
                     app_handle
                         .state::<Config>()
                         .screen_information()
-                        .modifiers(),
+                        .modifier(env::consts::OS),
                 )
                 .await;
                 loop {
