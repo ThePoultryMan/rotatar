@@ -43,6 +43,20 @@ impl AudioHandler {
         &self.input_devices
     }
 
+    /// Selects the first device in the internal list of input devices that contains "default" in
+    /// the device name. If no device meets those conditions, then no change is made to the selected
+    /// device index.
+    pub fn select_default_device(&mut self) -> bool {
+        for (index, device) in self.input_devices.iter().enumerate() {
+            if let Ok(name) = device.name() {
+                if name.to_ascii_lowercase().contains("default") {
+                    return self.set_current_input_device(index);
+                }
+            }
+        };
+        false
+    }
+    
     /// Sets the current input device by the index in respect to the internal list of input devices.
     /// Also updates the StreamConfig.
     ///
@@ -53,6 +67,7 @@ impl AudioHandler {
             if let Ok(mut supported_input_configs) = device.supported_input_configs() {
                 if let Some(supported_input_config) = supported_input_configs.next() {
                     self.config = Some(supported_input_config.with_max_sample_rate().config());
+                    println!("Device '{index}' has been selected");
                     return true;
                 }
             }
@@ -79,12 +94,12 @@ impl AudioHandler {
             let data_callback_sender = self.sender.clone();
             let error_callback_sender = self.sender.clone();
             let _ = self
-                .sender
-                .send(Message::UpdateAudioStatus(AudioStatus::Ready))
-                .await;
-            match self.input_devices[self.current_input_index].build_input_stream(
-                config,
-                move |data: &[f32], _: &cpal::InputCallbackInfo| {
+            .sender
+            .send(Message::UpdateAudioStatus(AudioStatus::Ready))
+            .await;
+        match self.input_devices[self.current_input_index].build_input_stream(
+            config,
+            move |data: &[f32], _: &cpal::InputCallbackInfo| {
                     if let (Ok(mut last_time), Ok(mut sensitivity), Ok(mut last_sensitivity)) = (
                         last_time.lock(),
                         sensitivity.lock(),
@@ -124,8 +139,8 @@ impl AudioHandler {
                             // will be dropped.
                             let _ = data_callback_sender
                                 .send_blocking(Message::SensitivityChanged(*sensitivity));
+                            *last_sensitivity = *sensitivity;
                         }
-                        *last_sensitivity = *sensitivity;
                     }
                 },
                 move |stream_error| {

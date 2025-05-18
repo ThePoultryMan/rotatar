@@ -13,10 +13,11 @@ use tauri::{AppHandle, Emitter, Manager, generate_context};
 pub fn run(config: Config) {
     let (sender, receiver) = async_channel::unbounded();
     let build_sender = sender.clone();
+    let audio_sender = sender.clone();
 
     tokio::spawn(async move {
-        let audio_handler = AudioHandler::new(sender.clone());
-        sender
+        let audio_handler = AudioHandler::new(audio_sender.clone());
+        audio_sender
             .send(audio::handle_audio(audio_handler).await)
             .await
             .unwrap();
@@ -37,7 +38,7 @@ pub fn run(config: Config) {
                 .unwrap();
             tokio::spawn(async move {
                 loop {
-                    if let Ok(message) = receiver.recv().await {
+                    if let Ok(message) = receiver.recv_blocking() {
                         handle_message(build_sender.clone(), app_handle_audio.clone(), message)
                             .await;
                     }
@@ -56,7 +57,7 @@ pub fn run(config: Config) {
                             .unwrap(),
                     );
                 }
-                let receiver = get_mouse_pos(
+                let mos_pos_receiver = get_mouse_pos(
                     Duration::from_millis(100),
                     app_handle
                         .state::<Config>()
@@ -65,19 +66,16 @@ pub fn run(config: Config) {
                 )
                 .await;
                 loop {
-                    if let Ok(position) = receiver.recv().await {
+                    let mut message = None;
+                    if let Ok(position) = mos_pos_receiver.recv().await {
                         if let Ok(mut state) = app_handle.state::<Mutex<State>>().lock() {
                             if state.set_current_image_xy(position.x(), position.y()) {
-                                let _ = app_handle.emit(
-                                    "current-image",
-                                    app_handle
-                                        .state::<Config>()
-                                        .idle_images()
-                                        .get(state.current_image())
-                                        .unwrap(),
-                                );
+                                message = Some(Message::CurrentImageChanged);
                             }
                         }
+                    }
+                    if let Some(message) = message {
+                        sender.send(message).await.unwrap();
                     }
                 }
             });
@@ -108,6 +106,18 @@ async fn handle_message(sender: Sender<Message>, app_handle: AppHandle, message:
         }
         Message::SensitivityChanged(sensitivity) => {
             app_handle.emit("sensitivity-changed", sensitivity).unwrap();
+        }
+        Message::CurrentImageChanged => {
+            if let Ok(state) = app_handle.state::<Mutex<State>>().lock() {
+                let _ = app_handle.emit(
+                    "current-image",
+                    app_handle
+                        .state::<Config>()
+                        .idle_images()
+                        .get(state.current_image())
+                        .unwrap(),
+                );
+            }
         }
         _ => {}
     }

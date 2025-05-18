@@ -11,7 +11,7 @@
   });
   listen<number>("sensitivity-changed", (event) => {
     sensitivity = event.payload;
-  })
+  });
 </script>
 
 <div class="flex min-h-screen w-full items-center justify-center">
