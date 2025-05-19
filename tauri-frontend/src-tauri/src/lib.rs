@@ -1,4 +1,4 @@
-use std::{env, sync::Mutex, time::Duration};
+use std::{env, path::PathBuf, sync::Mutex, time::Duration};
 
 use async_channel::Sender;
 use rotatar_backend::{
@@ -15,6 +15,7 @@ pub fn run(config: Config) {
 
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .invoke_handler(tauri::generate_handler![get_config, get_current_image])
         .setup(move |app| {
             app.manage(Mutex::new(State::new(
                 config.screen_information().size(),
@@ -99,24 +100,59 @@ async fn handle_message(sender: Sender<Message>, app_handle: AppHandle, message:
                     });
                 }
             } else {
-                set_state!(app_handle.state::<Mutex<State>>(), set_audio_status, audio_status);
+                set_state!(
+                    app_handle.state::<Mutex<State>>(),
+                    set_audio_status,
+                    audio_status
+                );
             }
         }
         Message::SensitivityChanged(sensitivity) => {
             app_handle.emit("sensitivity-changed", sensitivity).unwrap();
         }
         Message::CurrentImageChanged => {
-            if let Ok(state) = app_handle.state::<Mutex<State>>().lock() {
-                let _ = app_handle.emit(
-                    "current-image",
-                    app_handle
-                        .state::<Config>()
-                        .idle_images()
-                        .get(state.current_image())
-                        .unwrap(),
-                );
-            }
+            let _ = app_handle.emit(
+                "current-image",
+                get_current_image_inner(
+                    app_handle.state::<Mutex<State>>(),
+                    app_handle.state::<Config>(),
+                ),
+            );
+        }
+        Message::MagnitudeChanged(magnitude) => {
+            app_handle.emit("magnitude-changed", magnitude).unwrap();
+        }
+        Message::ConfigChanged(config) => {
+            app_handle.emit("config-changed", config).unwrap();
         }
         _ => {}
     }
+}
+
+fn get_current_image_inner(
+    state: tauri::State<'_, Mutex<State>>,
+    config: tauri::State<'_, Config>,
+) -> PathBuf {
+    if let Ok(state) = state.lock() {
+        if state.is_speaking() {
+            config.speaking_images()[state.current_image()].clone()
+        } else {
+            config.idle_images()[state.current_image()].clone()
+        }
+    } else {
+        panic!("Poison error in get_current_image_inner:\n{}", file!());
+    }
+}
+
+#[tauri::command]
+fn get_config(app_handle: AppHandle) -> Config {
+    app_handle.state::<Config>().inner().clone()
+}
+
+#[tauri::command]
+fn get_current_image(app_handle: AppHandle) -> PathBuf {
+    get_current_image_inner(
+        app_handle.state::<Mutex<State>>(),
+        app_handle.state::<Config>(),
+    )
 }

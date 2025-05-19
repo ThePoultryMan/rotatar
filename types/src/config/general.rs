@@ -1,12 +1,12 @@
 use std::{collections::HashMap, path::PathBuf};
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use crate::TwoInts;
 
 use super::audio::AudioConfig;
 
-#[derive(Clone, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Config {
     #[serde(default)]
     audio: AudioConfig,
@@ -16,7 +16,7 @@ pub struct Config {
     screen_information: ScreenInformation,
 }
 
-#[derive(Clone, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ScreenInformation {
     size: TwoInts,
     modifiers: HashMap<String, TwoInts>,

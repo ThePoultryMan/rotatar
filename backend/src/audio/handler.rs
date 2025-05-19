@@ -126,11 +126,14 @@ impl AudioHandler {
                         for item in buffer.iter().take(end).skip(start) {
                             magnitudes.push((item.norm_sqr() as f64).sqrt() as i32 + 1);
                         }
-                        let max_magnitude = *magnitudes.iter().max().unwrap_or(&0);
+                        let maximum_magnitude = *magnitudes.iter().max().unwrap_or(&0).min(&self.audio_config.max_magnitude());
+                        data_callback_sender
+                            .send_blocking(Message::MagnitudeChanged(maximum_magnitude))
+                            .unwrap();
                         // If the maximum magnitude is greater than the "speaking threshold," sensitivity
                         // is set to 1.0. If not, the sensitivity is decreased at a rate of 3.0 sensitivity/second
                         // Calculated using the delta found before.
-                        if max_magnitude > self.audio_config.magnitude_threshold() {
+                        if maximum_magnitude > self.audio_config.magnitude_threshold() {
                             *sensitivity = 1.0;
                         } else {
                             *sensitivity = (*sensitivity - (3.0 * delta)).max(0.0);

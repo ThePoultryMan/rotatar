@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use async_channel::{Receiver, Sender};
+use rotatar_types::Config;
 
 use crate::audio::{AudioHandler, AudioStatus};
 
@@ -11,5 +12,6 @@ pub enum Message {
     OutsideListenerReady(Sender<Arc<Receiver<Message>>>),
     CurrentImageChanged,
     SensitivityChanged(f32),
-    MagnitudeChanged(u32),
+    MagnitudeChanged(i32),
+    ConfigChanged(Config),
 }
