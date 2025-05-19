@@ -1,10 +1,15 @@
+use serde::Serialize;
+
 use super::AudioHandler;
 
-#[derive(Debug, Clone)]
+#[derive(Clone, Debug, Serialize)]
 pub enum AudioStatus {
     Ready,
     Closed,
-    Polling { audio_handler: Option<AudioHandler> },
+    Polling {
+        #[serde(skip_serializing)]
+        audio_handler: Option<AudioHandler>
+    },
 }
 
 impl PartialEq for AudioStatus {

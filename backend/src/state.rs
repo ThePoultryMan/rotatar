@@ -1,5 +1,3 @@
-// use crate::audio::AudioStatus;
-
 /// Generates boiler plate for locking the mutex before setting state.
 #[macro_export]
 macro_rules! set_state {
@@ -17,14 +15,16 @@ macro_rules! set_state {
 }
 
 use rotatar_types::TwoInts;
+use serde::Serialize;
 
 use crate::audio::AudioStatus;
 
-#[derive(Clone)]
+#[derive(Clone, Serialize)]
 pub struct State {
     current_image: usize,
     sensitivity: f32,
     audio_status: AudioStatus,
+    audio_devices: Vec<String>,
 
     section_size: (i32, i32),
     x_sections: i32,
@@ -36,6 +36,7 @@ impl State {
             current_image: 0,
             sensitivity: 0.0,
             audio_status: AudioStatus::Closed,
+            audio_devices: Vec::new(),
             section_size: (screen_size.x() / sections.0, screen_size.y() / sections.1),
             x_sections: sections.0,
         };
@@ -83,6 +84,10 @@ impl State {
 
     pub fn set_audio_status(&mut self, audio_status: AudioStatus) {
         self.audio_status = audio_status;
+    }
+
+    pub fn set_audio_devices(&mut self, audio_devices: Vec<String>) {
+        self.audio_devices = audio_devices;
     }
 
     pub fn section_size(&self) -> (i32, i32) {

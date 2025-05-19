@@ -43,6 +43,12 @@ impl AudioHandler {
         if let Ok(input_devices) = self.host.input_devices() {
             self.input_devices = input_devices.collect();
         }
+        self.sender.send_blocking(Message::AudioDevicesChanged(
+            self.input_devices
+                .iter()
+                .filter_map(|device| device.name().ok())
+                .collect(),
+        )).unwrap();
         &self.input_devices
     }
 
@@ -126,7 +132,11 @@ impl AudioHandler {
                         for item in buffer.iter().take(end).skip(start) {
                             magnitudes.push((item.norm_sqr() as f64).sqrt() as i32 + 1);
                         }
-                        let maximum_magnitude = *magnitudes.iter().max().unwrap_or(&0).min(&self.audio_config.max_magnitude());
+                        let maximum_magnitude = *magnitudes
+                            .iter()
+                            .max()
+                            .unwrap_or(&0)
+                            .min(&self.audio_config.max_magnitude());
                         data_callback_sender
                             .send_blocking(Message::MagnitudeChanged(maximum_magnitude))
                             .unwrap();

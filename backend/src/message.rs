@@ -14,4 +14,5 @@ pub enum Message {
     SensitivityChanged(f32),
     MagnitudeChanged(i32),
     ConfigChanged(Config),
+    AudioDevicesChanged(Vec<String>),
 }

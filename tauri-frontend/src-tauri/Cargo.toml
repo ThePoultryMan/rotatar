@@ -15,7 +15,7 @@ release = ["tauri/custom-protocol"]
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]
-tauri-build = "2"
+tauri-build = { version = "2", features = [] }
 
 [dependencies]
 async-channel.workspace = true
