@@ -96,12 +96,10 @@ async fn handle_message(sender: Sender<Message>, app_handle: AppHandle, message:
                 if let Some(audio_handler) = audio_handler {
                     tauri::async_runtime::spawn(async move {
                         audio::wait_for_audio(audio_handler).await;
-                        println!("done waiting for audio");
                     });
                 }
             } else {
                 set_state!(app_handle.state::<Mutex<State>>(), set_audio_status, audio_status);
-                println!("OMG, we just set state");
             }
         }
         Message::SensitivityChanged(sensitivity) => {
