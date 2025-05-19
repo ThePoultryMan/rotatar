@@ -17,6 +17,7 @@ pub async fn run(args: ValidArgs, config: Config) -> Result<(), FrontendError> {
     } else {
         iced::Color::TRANSPARENT
     };
+    let audio_config = config.audio();
     let app = App::new(config, background_color, receiver);
 
     let state = app.state();
@@ -49,6 +50,7 @@ pub async fn run(args: ValidArgs, config: Config) -> Result<(), FrontendError> {
     let _ = cloned_sender
         .send(Message::SetupAudio(AudioHandler::new(
             cloned_sender.clone(),
+            audio_config,
         )))
         .await;
     let result = iced::application("rotatar", App::update, App::view)

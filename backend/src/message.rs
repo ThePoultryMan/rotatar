@@ -11,4 +11,5 @@ pub enum Message {
     OutsideListenerReady(Sender<Arc<Receiver<Message>>>),
     CurrentImageChanged,
     SensitivityChanged(f32),
+    MagnitudeChanged(u32),
 }

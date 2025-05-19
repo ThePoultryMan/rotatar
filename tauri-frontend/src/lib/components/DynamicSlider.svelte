@@ -6,4 +6,4 @@
   let percent = $derived(Math.round(value / MAX_VALUE * 100));
 </script>
 
-<div class="w-56" style={`background: linear-gradient(to right, #9c23d3 ${percent}%, #ffffff ${percent}%);`}></div>
+<div class="w-56 h-3" style={`background: linear-gradient(to left, #9c23d3 ${percent}%, #ffffff ${percent}%);`}></div>

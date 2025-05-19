@@ -17,5 +17,4 @@
 <div class="flex min-h-screen w-full items-center justify-center">
   <img src={currentImage} alt="current png" />
   <DynamicSlider value={sensitivity} />
-  {sensitivity}
 </div>

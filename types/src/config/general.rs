@@ -4,8 +4,12 @@ use serde::Deserialize;
 
 use crate::TwoInts;
 
+use super::audio::AudioConfig;
+
 #[derive(Clone, Deserialize)]
 pub struct Config {
+    #[serde(default)]
+    audio: AudioConfig,
     sections: (i32, i32),
     idle_images: Vec<PathBuf>,
     speaking_images: Vec<PathBuf>,
@@ -19,6 +23,10 @@ pub struct ScreenInformation {
 }
 
 impl Config {
+    pub fn audio(&self) -> AudioConfig {
+        self.audio
+    }
+
     pub fn sections(&self) -> (i32, i32) {
         self.sections
     }

@@ -12,16 +12,6 @@ use tauri::{AppHandle, Emitter, Manager, generate_context};
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run(config: Config) {
     let (sender, receiver) = async_channel::unbounded();
-    let build_sender = sender.clone();
-    let audio_sender = sender.clone();
-
-    tokio::spawn(async move {
-        let audio_handler = AudioHandler::new(audio_sender.clone());
-        audio_sender
-            .send(audio::handle_audio(audio_handler).await)
-            .await
-            .unwrap();
-    });
 
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
@@ -32,50 +22,54 @@ pub fn run(config: Config) {
             )));
             app.manage(config);
 
-            let app_handle_audio = app.handle().clone();
-            build_sender
-                .send_blocking(Message::SetupAudio(AudioHandler::new(build_sender.clone())))
-                .unwrap();
-            tokio::spawn(async move {
-                loop {
-                    if let Ok(message) = receiver.recv_blocking() {
-                        handle_message(build_sender.clone(), app_handle_audio.clone(), message)
-                            .await;
-                    }
-                }
-            });
-            let app_handle = app.handle().clone();
-            tokio::spawn(async move {
-                let state = app_handle.state::<Mutex<State>>();
-                if let Ok(state) = state.lock() {
-                    let _ = app_handle.emit(
-                        "current-image",
-                        app_handle
-                            .state::<Config>()
-                            .idle_images()
-                            .get(state.current_image())
-                            .unwrap(),
-                    );
-                }
-                let mos_pos_receiver = get_mouse_pos(
+            let mouse_app_handle = app.handle().clone();
+            let mouse_sender = sender.clone();
+            tauri::async_runtime::spawn(async move {
+                let mouse_pos_receiver = get_mouse_pos(
                     Duration::from_millis(100),
-                    app_handle
+                    mouse_app_handle
                         .state::<Config>()
                         .screen_information()
                         .modifier(env::consts::OS),
                 )
                 .await;
                 loop {
-                    let mut message = None;
-                    if let Ok(position) = mos_pos_receiver.recv().await {
-                        if let Ok(mut state) = app_handle.state::<Mutex<State>>().lock() {
-                            if state.set_current_image_xy(position.x(), position.y()) {
-                                message = Some(Message::CurrentImageChanged);
+                    if let Ok(position) = mouse_pos_receiver.recv().await {
+                        let mut message_to_send = None;
+                        match mouse_app_handle.state::<Mutex<State>>().lock() {
+                            Ok(mut state) => {
+                                if state.set_current_image_xy(position.x(), position.y()) {
+                                    message_to_send = Some(Message::CurrentImageChanged);
+                                }
                             }
+                            Err(error) => todo!("{error}"),
+                        }
+                        if let Some(message_to_send) = message_to_send {
+                            mouse_sender.send(message_to_send).await.unwrap();
                         }
                     }
-                    if let Some(message) = message {
-                        sender.send(message).await.unwrap();
+                }
+            });
+
+            let audio_app_handle = app.handle().clone();
+            let audio_sender = sender.clone();
+            tauri::async_runtime::spawn(async move {
+                audio_sender
+                    .send(Message::SetupAudio(AudioHandler::new(
+                        audio_sender.clone(),
+                        audio_app_handle.state::<Config>().audio(),
+                    )))
+                    .await
+                    .unwrap();
+            });
+
+            let message_app_handle = app.handle().clone();
+            tokio::spawn(async move {
+                let message_sender = sender.clone();
+                loop {
+                    if let Ok(message) = receiver.recv_blocking() {
+                        handle_message(message_sender.clone(), message_app_handle.clone(), message)
+                            .await;
                     }
                 }
             });
@@ -88,20 +82,26 @@ pub fn run(config: Config) {
 
 async fn handle_message(sender: Sender<Message>, app_handle: AppHandle, message: Message) {
     match message {
-        Message::SetupAudio(audio_handler) => {
-            handle_audio_wrapper(sender, audio_handler);
+        Message::SetupAudio(mut audio_handler) => {
+            audio_handler.update_input_devices();
+            tauri::async_runtime::spawn(async move {
+                sender
+                    .send(audio::handle_audio(audio_handler).await)
+                    .await
+                    .unwrap();
+            });
         }
         Message::UpdateAudioStatus(audio_status) => {
             if let AudioStatus::Polling { audio_handler } = audio_status {
                 if let Some(audio_handler) = audio_handler {
-                    wait_for_audio_wrapper(sender, audio_handler).await;
+                    tauri::async_runtime::spawn(async move {
+                        audio::wait_for_audio(audio_handler).await;
+                        println!("done waiting for audio");
+                    });
                 }
             } else {
-                set_state!(
-                    app_handle.state::<Mutex<State>>(),
-                    set_audio_status,
-                    audio_status
-                );
+                set_state!(app_handle.state::<Mutex<State>>(), set_audio_status, audio_status);
+                println!("OMG, we just set state");
             }
         }
         Message::SensitivityChanged(sensitivity) => {
@@ -121,21 +121,4 @@ async fn handle_message(sender: Sender<Message>, app_handle: AppHandle, message:
         }
         _ => {}
     }
-}
-
-fn handle_audio_wrapper(sender: Sender<Message>, mut audio_handler: AudioHandler) {
-    tokio::spawn(async move {
-        audio_handler.update_input_devices();
-        let message = audio::handle_audio(audio_handler).await;
-        sender.send(message).await.unwrap();
-    });
-}
-
-async fn wait_for_audio_wrapper(sender: Sender<Message>, audio_handler: AudioHandler) {
-    tokio::spawn(async move {
-        sender
-            .send(audio::wait_for_audio(audio_handler).await)
-            .await
-            .unwrap();
-    });
 }

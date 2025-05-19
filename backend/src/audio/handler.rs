@@ -5,6 +5,7 @@ use cpal::{
     Device, Host, StreamConfig,
     traits::{DeviceTrait, HostTrait, StreamTrait},
 };
+use rotatar_types::AudioConfig;
 use rustfft::{FftPlanner, num_complex::Complex};
 
 use crate::{arctex, message::Message};
@@ -17,16 +18,18 @@ pub struct AudioHandler {
     input_devices: Vec<Device>,
     current_input_index: usize,
     config: Option<StreamConfig>,
+    audio_config: AudioConfig,
 }
 
 impl AudioHandler {
-    pub fn new(sender: Sender<Message>) -> Self {
+    pub fn new(sender: Sender<Message>, audio_config: AudioConfig) -> Self {
         Self {
             host: cpal::default_host(),
             sender,
             input_devices: Vec::new(),
             current_input_index: 0,
             config: None,
+            audio_config,
         }
     }
 
@@ -53,10 +56,10 @@ impl AudioHandler {
                     return self.set_current_input_device(index);
                 }
             }
-        };
+        }
         false
     }
-    
+
     /// Sets the current input device by the index in respect to the internal list of input devices.
     /// Also updates the StreamConfig.
     ///
@@ -94,12 +97,12 @@ impl AudioHandler {
             let data_callback_sender = self.sender.clone();
             let error_callback_sender = self.sender.clone();
             let _ = self
-            .sender
-            .send(Message::UpdateAudioStatus(AudioStatus::Ready))
-            .await;
-        match self.input_devices[self.current_input_index].build_input_stream(
-            config,
-            move |data: &[f32], _: &cpal::InputCallbackInfo| {
+                .sender
+                .send(Message::UpdateAudioStatus(AudioStatus::Ready))
+                .await;
+            match self.input_devices[self.current_input_index].build_input_stream(
+                config,
+                move |data: &[f32], _: &cpal::InputCallbackInfo| {
                     if let (Ok(mut last_time), Ok(mut sensitivity), Ok(mut last_sensitivity)) = (
                         last_time.lock(),
                         sensitivity.lock(),
@@ -127,7 +130,7 @@ impl AudioHandler {
                         // If the maximum magnitude is greater than the "speaking threshold," sensitivity
                         // is set to 1.0. If not, the sensitivity is decreased at a rate of 3.0 sensitivity/second
                         // Calculated using the delta found before.
-                        if max_magnitude > 6 {
+                        if max_magnitude > self.audio_config.magnitude_threshold() {
                             *sensitivity = 1.0;
                         } else {
                             *sensitivity = (*sensitivity - (3.0 * delta)).max(0.0);
@@ -203,6 +206,7 @@ impl Clone for AudioHandler {
             input_devices: self.input_devices.clone(),
             current_input_index: self.current_input_index,
             config: self.config.clone(),
+            audio_config: self.audio_config,
         }
     }
 }

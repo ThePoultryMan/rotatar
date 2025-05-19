@@ -1,6 +1,6 @@
 pub use cli::{Args, ArgsError, ValidArgs};
 pub use color::Color;
-pub use config::Config;
+pub use config::{Config, AudioConfig};
 pub use error::FrontendError;
 pub use frontend::Frontend;
 pub use numbers::TwoInts;
