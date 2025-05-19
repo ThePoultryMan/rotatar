@@ -1,4 +1,4 @@
-use std::{thread, time::Duration};
+use std::time::Duration;
 
 pub use error::AudioResult;
 pub use handler::AudioHandler;
@@ -52,7 +52,7 @@ pub async fn handle_audio(mut audio_handler: AudioHandler) -> Message {
 }
 
 pub async fn wait_for_audio(mut audio_handler: AudioHandler) -> Message {
-    thread::sleep(Duration::from_millis(75));
+    tokio::time::sleep(Duration::from_millis(75)).await;
     audio_handler.update_input_devices();
     handle_audio(audio_handler).await
 }
