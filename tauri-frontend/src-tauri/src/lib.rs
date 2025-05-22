@@ -1,25 +1,32 @@
 use std::{env, sync::Mutex, time::Duration};
 
 use async_channel::Sender;
-use rotatar_backend::{
-    Message, State,
-    audio::{self, AudioHandler, AudioStatus},
-    get_mouse_pos, set_state,
-};
+use audio::set_up_audio;
+use rotatar_backend::{Message, State, audio::AudioStatus, get_mouse_pos, set_state};
 use rotatar_types::Config;
 use tauri::{AppHandle, Emitter, Manager, generate_context};
+
+mod audio;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run(config: Config) {
     let (sender, receiver) = async_channel::unbounded();
+    let (audio_sender, audio_receiver) = async_channel::bounded(5);
 
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![get_config, get_state])
+        .invoke_handler(tauri::generate_handler![
+            get_config,
+            get_state,
+            audio::set_audio_device
+        ])
         .setup(move |app| {
             app.manage(Mutex::new(State::new(
+                sender.clone(),
                 config.screen_information().size(),
                 config.sections(),
+                audio_sender,
+                audio_receiver.clone(),
             )));
             app.manage(config);
 
@@ -52,17 +59,7 @@ pub fn run(config: Config) {
                 }
             });
 
-            let audio_app_handle = app.handle().clone();
-            let audio_sender = sender.clone();
-            tauri::async_runtime::spawn(async move {
-                audio_sender
-                    .send(Message::SetupAudio(AudioHandler::new(
-                        audio_sender.clone(),
-                        audio_app_handle.state::<Config>().audio(),
-                    )))
-                    .await
-                    .unwrap();
-            });
+            set_up_audio(sender.clone(), audio_receiver, app.handle().clone());
 
             let message_app_handle = app.handle().clone();
             tokio::spawn(async move {
@@ -85,18 +82,20 @@ async fn handle_message(sender: Sender<Message>, app_handle: AppHandle, message:
     match message {
         Message::SetupAudio(mut audio_handler) => {
             audio_handler.update_input_devices();
+            let audio_device = app_handle.state::<Config>().audio().current_device();
             tauri::async_runtime::spawn(async move {
                 sender
-                    .send(audio::handle_audio(audio_handler).await)
+                    .send(rotatar_backend::audio::handle_audio(audio_handler, audio_device).await)
                     .await
                     .unwrap();
             });
         }
-        Message::UpdateAudioStatus(audio_status) => {
-            if let AudioStatus::Polling { audio_handler } = audio_status {
+        Message::UpdateAudioStatus(audio_status, audio_handler) => {
+            if audio_status == AudioStatus::Polling {
                 if let Some(audio_handler) = audio_handler {
+                    let audio_device = app_handle.state::<Config>().audio().current_device();
                     tauri::async_runtime::spawn(async move {
-                        audio::wait_for_audio(audio_handler).await;
+                        rotatar_backend::audio::wait_for_audio(audio_handler, audio_device).await;
                     });
                 }
             } else {
@@ -116,7 +115,7 @@ async fn handle_message(sender: Sender<Message>, app_handle: AppHandle, message:
                 app_handle
                     .state::<Mutex<State>>()
                     .lock()
-                    .expect(&format!("State mutex was poisoned in {}", file!()))
+                    .unwrap_or_else(|_| panic!("State mutex was poisoned in {}", file!()))
                     .current_image(),
             );
         }
@@ -148,9 +147,6 @@ fn get_state(app_handle: AppHandle) -> State {
     app_handle
         .state::<Mutex<State>>()
         .lock()
-        .expect(&format!(
-            "The state mutex was poisoned. Found in: {}",
-            file!()
-        ))
+        .unwrap_or_else(|_| panic!("The state mutex was poisoned. Found in: {}", file!()))
         .clone()
 }

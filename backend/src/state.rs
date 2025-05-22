@@ -14,16 +14,27 @@ macro_rules! set_state {
     };
 }
 
+use async_channel::{Receiver, Sender};
 use rotatar_types::TwoInts;
 use serde::Serialize;
 
-use crate::audio::AudioStatus;
+use crate::{
+    Message,
+    audio::{AudioMessage, AudioStatus},
+};
 
 #[derive(Clone, Serialize)]
 pub struct State {
     current_image: usize,
     sensitivity: f32,
+    #[serde(skip_serializing)]
+    message_sender: Sender<Message>,
+
     audio_status: AudioStatus,
+    #[serde(skip_serializing)]
+    audio_sender: Sender<AudioMessage>,
+    #[serde(skip_serializing)]
+    audio_receiver: Receiver<AudioMessage>,
     audio_devices: Vec<String>,
 
     section_size: (i32, i32),
@@ -31,11 +42,20 @@ pub struct State {
 }
 
 impl State {
-    pub fn new(screen_size: TwoInts, sections: (i32, i32)) -> Self {
+    pub fn new(
+        message_sender: Sender<Message>,
+        screen_size: TwoInts,
+        sections: (i32, i32),
+        audio_sender: Sender<AudioMessage>,
+        audio_receiver: Receiver<AudioMessage>,
+    ) -> Self {
         let mut state = Self {
             current_image: 0,
             sensitivity: 0.0,
+            message_sender,
             audio_status: AudioStatus::Closed,
+            audio_sender,
+            audio_receiver,
             audio_devices: Vec::new(),
             section_size: (screen_size.x() / sections.0, screen_size.y() / sections.1),
             x_sections: sections.0,
@@ -78,12 +98,24 @@ impl State {
         self.sensitivity = sensitivity;
     }
 
+    pub fn message_sender(&self) -> Sender<Message> {
+        self.message_sender.clone()
+    }
+
     pub fn audio_status(&self) -> &AudioStatus {
         &self.audio_status
     }
 
     pub fn set_audio_status(&mut self, audio_status: AudioStatus) {
         self.audio_status = audio_status;
+    }
+
+    pub fn audio_handler_sender(&self) -> Sender<AudioMessage> {
+        self.audio_sender.clone()
+    }
+
+    pub fn audio_receiver(&self) -> Receiver<AudioMessage> {
+        self.audio_receiver.clone()
     }
 
     pub fn set_audio_devices(&mut self, audio_devices: Vec<String>) {

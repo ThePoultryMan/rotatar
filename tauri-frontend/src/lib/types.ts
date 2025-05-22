@@ -8,6 +8,7 @@ export type Config = {
   screen_information: ScreenInformation;
 };
 export type AudioConfig = {
+  current_device: number;
   magnitude_threshold: number;
   max_magnitude: number;
 };

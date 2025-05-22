@@ -1,6 +1,6 @@
 use std::{fmt::Debug, time::Instant};
 
-use async_channel::Sender;
+use async_channel::{Receiver, Sender};
 use cpal::{
     Device, Host, StreamConfig,
     traits::{DeviceTrait, HostTrait, StreamTrait},
@@ -10,11 +10,12 @@ use rustfft::{FftPlanner, num_complex::Complex};
 
 use crate::{arctex, message::Message};
 
-use super::{AudioHandlerResult, AudioStatus, error::AudioResult};
+use super::{AudioHandlerResult, AudioMessage, AudioStatus, error::AudioError};
 
 pub struct AudioHandler {
     host: Host,
     sender: Sender<Message>,
+    receiver: Receiver<AudioMessage>,
     input_devices: Vec<Device>,
     current_input_index: usize,
     config: Option<StreamConfig>,
@@ -22,10 +23,15 @@ pub struct AudioHandler {
 }
 
 impl AudioHandler {
-    pub fn new(sender: Sender<Message>, audio_config: AudioConfig) -> Self {
+    pub fn new(
+        sender: Sender<Message>,
+        receiver: Receiver<AudioMessage>,
+        audio_config: AudioConfig,
+    ) -> Self {
         Self {
             host: cpal::default_host(),
             sender,
+            receiver,
             input_devices: Vec::new(),
             current_input_index: 0,
             config: None,
@@ -43,12 +49,14 @@ impl AudioHandler {
         if let Ok(input_devices) = self.host.input_devices() {
             self.input_devices = input_devices.collect();
         }
-        self.sender.send_blocking(Message::AudioDevicesChanged(
-            self.input_devices
-                .iter()
-                .filter_map(|device| device.name().ok())
-                .collect(),
-        )).unwrap();
+        self.sender
+            .send_blocking(Message::AudioDevicesChanged(
+                self.input_devices
+                    .iter()
+                    .filter_map(|device| device.name().ok())
+                    .collect(),
+            ))
+            .unwrap();
         &self.input_devices
     }
 
@@ -85,6 +93,31 @@ impl AudioHandler {
         false
     }
 
+    pub fn current_input_index(&self) -> usize {
+        self.current_input_index
+    }
+
+    /// Sets the current input device based on the name provided. This selects from the internally
+    /// kept list of input devices. If you want to update the list, you should do so before calling
+    /// this method, as this method does not update the list.
+    /// 
+    /// If there are multiple devices with the same name, the first in the list is selected.
+    /// 
+    /// # Returns
+    /// Returns a [`Result`]. If no device with the provided name is found, an [`AudioError::NoDevice`]
+    /// is returned. If the current device is successfully set then [`Ok`] is returned. Ok(true)
+    /// if the input configuration was set, and `Ok(false)` if the config was not set.
+    pub fn set_input_device_from_name(&mut self, name: String) -> Result<bool, AudioError> {
+        for (index, device) in self.input_devices.iter().enumerate() {
+            if let Ok(device_name) = device.name() {
+                if device_name == name {
+                    return Ok(self.set_current_input_device(index));
+                }
+            }
+        }
+        Err(AudioError::NoDevice)
+    }
+
     /// Consumes the AudioHolder, returns a wrapper containing information about the exit when the
     /// future resolves.
     ///
@@ -104,7 +137,7 @@ impl AudioHandler {
             let error_callback_sender = self.sender.clone();
             let _ = self
                 .sender
-                .send(Message::UpdateAudioStatus(AudioStatus::Ready))
+                .send(Message::UpdateAudioStatus(AudioStatus::Ready, None))
                 .await;
             match self.input_devices[self.current_input_index].build_input_stream(
                 config,
@@ -177,8 +210,13 @@ impl AudioHandler {
                                 if let Some(error) = *error {
                                     return AudioHandlerResult {
                                         audio_handler: self,
-                                        result: error,
+                                        error,
                                     };
+                                } else if !self.receiver.is_empty() {
+                                    let message = self.receiver.recv_blocking().unwrap();
+                                    match message {
+                                        AudioMessage::Stop => break,
+                                    }
                                 }
                             } else {
                                 panic!(
@@ -188,24 +226,24 @@ impl AudioHandler {
                         }
                         AudioHandlerResult {
                             audio_handler: self,
-                            result: AudioResult::Closed,
+                            error: AudioError::Closed,
                         }
                     } else {
                         AudioHandlerResult {
                             audio_handler: self,
-                            result: AudioResult::Play,
+                            error: AudioError::Play,
                         }
                     }
                 }
                 Err(_) => AudioHandlerResult {
                     audio_handler: self,
-                    result: AudioResult::BuildStreamError,
+                    error: AudioError::BuildStreamError,
                 },
             }
         } else {
             AudioHandlerResult {
                 audio_handler: self,
-                result: AudioResult::NoConfig,
+                error: AudioError::NoConfig,
             }
         }
     }
@@ -216,6 +254,7 @@ impl Clone for AudioHandler {
         Self {
             host: cpal::default_host(),
             sender: self.sender.clone(),
+            receiver: self.receiver.clone(),
             input_devices: self.input_devices.clone(),
             current_input_index: self.current_input_index,
             config: self.config.clone(),

@@ -10,7 +10,6 @@
 
   listen<number>("current-image-changed", (event) => {
     if (frontendData.state) {
-      console.log(event.payload);
       frontendData.state.current_image = event.payload;
     }
   });

@@ -12,13 +12,21 @@ mod util;
 pub async fn run(args: ValidArgs, config: Config) -> Result<(), FrontendError> {
     let (sender, receiver) = async_channel::unbounded();
     let cloned_sender = sender.clone();
+    let (audio_sender, audio_receiver) = async_channel::bounded(5);
     let background_color = if let Some(background_color) = args.background_color() {
         background_color.into_iced()
     } else {
         iced::Color::TRANSPARENT
     };
     let audio_config = config.audio();
-    let app = App::new(config, background_color, receiver);
+    let app = App::new(
+        config,
+        background_color,
+        receiver,
+        sender.clone(),
+        audio_sender,
+        audio_receiver.clone(),
+    );
 
     let state = app.state();
     let managed_config = app.config();
@@ -50,6 +58,7 @@ pub async fn run(args: ValidArgs, config: Config) -> Result<(), FrontendError> {
     let _ = cloned_sender
         .send(Message::SetupAudio(AudioHandler::new(
             cloned_sender.clone(),
+            audio_receiver,
             audio_config,
         )))
         .await;

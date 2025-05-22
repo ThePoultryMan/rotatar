@@ -3,7 +3,7 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-use async_channel::Receiver;
+use async_channel::{Receiver, Sender};
 use iced::{
     Background, Subscription, Task,
     futures::{SinkExt, Stream},
@@ -11,7 +11,7 @@ use iced::{
 };
 use rotatar_backend::{
     Message, State, arctex,
-    audio::{self, AudioStatus},
+    audio::{self, AudioMessage, AudioStatus},
     set_state,
 };
 use rotatar_types::Config;
@@ -39,13 +39,26 @@ pub struct App {
 }
 
 impl App {
-    pub fn new(config: Config, background_color: iced::Color, receiver: Receiver<Message>) -> Self {
+    pub fn new(
+        config: Config,
+        background_color: iced::Color,
+        receiver: Receiver<Message>,
+        message_sender: Sender<Message>,
+        audio_sender: Sender<AudioMessage>,
+        audio_receiver: Receiver<AudioMessage>,
+    ) -> Self {
         let screen_size = config.screen_information().size();
         let sections = config.sections();
         Self {
             config: arctex!(config),
             receiver: Arc::new(receiver),
-            state: arctex!(State::new(screen_size, sections)),
+            state: arctex!(State::new(
+                message_sender,
+                screen_size,
+                sections,
+                audio_sender,
+                audio_receiver
+            )),
             background_color,
         }
     }
@@ -54,12 +67,14 @@ impl App {
         match message {
             Message::SetupAudio(mut audio_handler) => {
                 audio_handler.update_input_devices();
-                return Task::future(audio::handle_audio(audio_handler));
+                let index = audio_handler.current_input_index();
+                return Task::future(audio::handle_audio(audio_handler, index));
             }
-            Message::UpdateAudioStatus(audio_status) => {
-                if let AudioStatus::Polling { audio_handler } = audio_status {
+            Message::UpdateAudioStatus(audio_status, audio_handler) => {
+                if audio_status == AudioStatus::Polling {
                     if let Some(audio_handler) = audio_handler {
-                        return Task::future(audio::wait_for_audio(audio_handler));
+                        let index = audio_handler.current_input_index();
+                        return Task::future(audio::wait_for_audio(audio_handler, index));
                     }
                 } else {
                     set_state!(self.state, set_audio_status, audio_status);

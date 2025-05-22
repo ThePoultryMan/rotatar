@@ -11,6 +11,7 @@ pub struct AudioConfig {
     #[default(50)]
     #[serde_inline_default(50)]
     max_magnitude: i32,
+    current_device: usize,
 }
 
 impl AudioConfig {
@@ -20,5 +21,9 @@ impl AudioConfig {
 
     pub fn max_magnitude(&self) -> i32 {
         self.max_magnitude
+    }
+
+    pub fn current_device(&self) -> usize {
+        self.current_device
     }
 }

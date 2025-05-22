@@ -2,7 +2,7 @@ use cpal::StreamError;
 use thiserror::Error;
 
 #[derive(Debug, Clone, Copy, PartialEq, Error)]
-pub enum AudioResult {
+pub enum AudioError {
     #[error("An error occurred while listening to microphone input")]
     Play,
     #[error("AudioHolder naturally closed")]
@@ -15,9 +15,11 @@ pub enum AudioResult {
     DeviceNotAvailable,
     #[error("An error occurred while running the cpal stream")]
     StreamError,
+    #[error("No device with that name was found.")]
+    NoDevice,
 }
 
-impl From<StreamError> for AudioResult {
+impl From<StreamError> for AudioError {
     fn from(value: StreamError) -> Self {
         match value {
             StreamError::DeviceNotAvailable => Self::DeviceNotAvailable,
