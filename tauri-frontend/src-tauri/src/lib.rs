@@ -62,7 +62,7 @@ pub fn run(config: Config) {
             set_up_audio(sender.clone(), audio_receiver, app.handle().clone());
 
             let message_app_handle = app.handle().clone();
-            tokio::spawn(async move {
+            tauri::async_runtime::spawn(async move {
                 let message_sender = sender.clone();
                 loop {
                     if let Ok(message) = receiver.recv_blocking() {

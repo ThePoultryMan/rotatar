@@ -26,6 +26,7 @@ pub async fn set_audio_device(device: String, app_handle: AppHandle) {
         audio_receiver,
         app_handle.state::<Config>().audio(),
     );
+    audio_handler.update_input_devices();
     audio_handler.set_input_device_from_name(device).unwrap();
     set_up_audio_inner(audio_handler, message_sender);
 }
