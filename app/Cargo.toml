@@ -4,11 +4,14 @@ version = "0.1.0"
 edition = "2024"
 
 [features]
+default = ["iced-frontend", "tauri-frontend"]
+iced-frontend = ["dep:iced-frontend", "rotatar-types/iced-frontend"]
+tauri-frontend = ["dep:tauri-frontend", "rotatar-types/tauri-frontend"]
 release = ["tauri-frontend/release"]
 
 [dependencies]
-iced-frontend = { path = "../iced-frontend" }
-tauri-frontend = { path = "../tauri-frontend/src-tauri" }
+iced-frontend = { path = "../iced-frontend", optional = true }
+tauri-frontend = { path = "../tauri-frontend/src-tauri", optional = true }
 rotatar-backend = { path = "../backend" }
 rotatar-types.workspace = true
 thiserror.workspace = true

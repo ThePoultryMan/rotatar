@@ -3,6 +3,11 @@ name = "rotatar-types"
 version = "0.1.0"
 edition = "2024"
 
+[features]
+default = ["iced-frontend", "tauri-frontend"]
+iced-frontend = []
+tauri-frontend = []
+
 [dependencies]
 clap.workspace = true
 thiserror.workspace = true

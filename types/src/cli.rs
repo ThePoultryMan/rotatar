@@ -52,7 +52,7 @@ impl TryFrom<Args> for ValidArgs {
         if let Some(config_path) = value.config_path {
             Ok(ValidArgs {
                 config_path,
-                frontend: value.frontend.unwrap_or(Frontend::Tauri),
+                frontend: value.frontend.unwrap_or_default(),
                 background_color: value.background_color,
             })
         } else {

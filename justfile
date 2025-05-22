@@ -1,8 +1,8 @@
 run:
-  cargo run -- --frontend iced --config ./test/test_config.json
+  cargo run --no-default-features -F iced-frontend -- --frontend iced --config ./test/test_config.json
 
 run-tauri:
-  cd tauri-frontend && bun run dev & cargo run -- --frontend tauri --config ./test/test_config.json
+  cd tauri-frontend && bun run dev & cargo run --no-default-features -F tauri-frontend -- --frontend tauri --config ./test/test_config.json
 
 build:
   cargo build --features release

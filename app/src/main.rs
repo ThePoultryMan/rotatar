@@ -17,7 +17,9 @@ async fn main() -> Result<(), AppError> {
 
     let config = rotatar_backend::run(&args).await?;
     match args.frontend() {
+        #[cfg(feature = "iced-frontend")]
         rotatar_types::Frontend::Iced => iced_frontend::run(args, config).await?,
+        #[cfg(feature = "tauri-frontend")]
         rotatar_types::Frontend::Tauri => tauri_frontend::run(config),
     }
 

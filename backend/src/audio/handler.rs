@@ -100,9 +100,9 @@ impl AudioHandler {
     /// Sets the current input device based on the name provided. This selects from the internally
     /// kept list of input devices. If you want to update the list, you should do so before calling
     /// this method, as this method does not update the list.
-    /// 
+    ///
     /// If there are multiple devices with the same name, the first in the list is selected.
-    /// 
+    ///
     /// # Returns
     /// Returns a [`Result`]. If no device with the provided name is found, an [`AudioError::NoDevice`]
     /// is returned. If the current device is successfully set then [`Ok`] is returned. Ok(true)

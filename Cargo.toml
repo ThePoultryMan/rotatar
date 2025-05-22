@@ -6,12 +6,14 @@ members = [
     "tauri-frontend/src-tauri",
     "types",
 ]
+default-members = ["app"]
 resolver = "3"
+
 
 [workspace.dependencies]
 async-channel = "2.3.1"
 clap = { version = "4.5.32", features = ["derive"] }
 thiserror = "2.0.12"
 tokio = "1.44.1"
-rotatar-types = { path = "./types" }
-rotatar-backend = { path = "./backend" }
+rotatar-types = { path = "./types", default-features = false }
+rotatar-backend = { path = "./backend", default-features = false }
