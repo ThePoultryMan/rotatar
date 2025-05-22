@@ -13,7 +13,7 @@
 <input
   dir="rtl"
   type="range"
-  class="block h-3 w-56 appearance-none"
+  class="block h-3 w-56 appearance-none border-1"
   bind:value={threshold}
   step="0.01"
   max={max_value}
@@ -29,7 +29,7 @@
   }
 
   input[type="range"]::-webkit-slider-thumb {
-    @apply h-3.5 w-1 appearance-none bg-sky-500;
-    margin-top: calc((var(--spacing) * 2.5 / 2) - (var(--spacing) * 3.5 / 2));
+    @apply h-5 w-1 appearance-none bg-sky-500;
+    margin-top: calc((var(--spacing) * 2.5 / 2) - (var(--spacing) * 5 / 2));
   }
 </style>

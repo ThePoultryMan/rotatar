@@ -46,7 +46,7 @@
   </a>
   <div class="flex min-h-screen w-full items-center justify-center">
     <img src={currentImage} alt="current png" />
-    <div class="*:my-2">
+    <div class="absolute right-5 bottom-3 *:my-2">
       <DynamicSlider value={frontendData.state.sensitivity} threshold={0} />
       <DynamicSlider
         value={magnitude}
