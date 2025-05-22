@@ -1,11 +1,10 @@
 <script lang="ts">
-  import { onDestroy, onMount } from "svelte";
+  import { onDestroy } from "svelte";
 
   import DynamicSlider from "$components/DynamicSlider.svelte";
 
   import IconSettingsOutlineRounded from "~icons/material-symbols/settings-outline-rounded";
 
-  import type { Config } from "$lib/types";
   import { convertFileSrc, invoke } from "@tauri-apps/api/core";
   import { listen } from "@tauri-apps/api/event";
   import { frontendData } from "$lib/stores.svelte";
@@ -23,7 +22,6 @@
       ("");
     }
   });
-  let sensitivity = $state(0.0);
   let magnitude = $state(0);
 
   let listeners = [];
@@ -42,17 +40,17 @@
   });
 </script>
 
-{#if frontendData.config}
+{#if frontendData.config && frontendData.state}
   <a href="/settings" class="absolute right-2 top-2 block">
     <IconSettingsOutlineRounded style="font-size: calc(var(--spacing) * 6)" />
   </a>
   <div class="flex min-h-screen w-full items-center justify-center">
     <img src={currentImage} alt="current png" />
     <div class="*:my-2">
-      <DynamicSlider value={sensitivity} threshold={0} />
+      <DynamicSlider value={frontendData.state.sensitivity} threshold={0} />
       <DynamicSlider
         value={magnitude}
-        max_value={frontendData.config?.audio.max_magnitude}
+        max_value={frontendData.config.audio.max_magnitude}
         bind:threshold={frontendData.config.audio.magnitude_threshold}
       />
     </div>
