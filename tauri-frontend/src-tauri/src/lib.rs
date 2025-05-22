@@ -66,8 +66,11 @@ pub fn run(config: Config) {
                 let message_sender = sender.clone();
                 loop {
                     if let Ok(message) = receiver.recv_blocking() {
-                        handle_message(message_sender.clone(), message_app_handle.clone(), message)
-                            .await;
+                        let message_sender_clone = message_sender.clone();
+                        let app_handle = message_app_handle.clone();
+                        tauri::async_runtime::spawn(async move {
+                            handle_message(message_sender_clone, app_handle, message).await;
+                        });
                     }
                 }
             });

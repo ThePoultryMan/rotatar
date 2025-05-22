@@ -17,6 +17,8 @@ pub enum AudioError {
     StreamError,
     #[error("No device with that name was found.")]
     NoDevice,
+    #[error("Audio handler was stopped from outside of the handler")]
+    Stopped,
 }
 
 impl From<StreamError> for AudioError {

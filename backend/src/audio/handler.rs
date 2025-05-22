@@ -206,6 +206,7 @@ impl AudioHandler {
                 Ok(stream) => {
                     // If anything goes wrong during reading, return result
                     if let Ok(()) = stream.play() {
+                        let mut stopped = false;
                         while !self.sender.is_closed() {
                             if let Ok(error) = error.clone().lock() {
                                 if let Some(error) = *error {
@@ -216,7 +217,10 @@ impl AudioHandler {
                                 } else if !self.receiver.is_empty() {
                                     let message = self.receiver.recv_blocking().unwrap();
                                     match message {
-                                        AudioMessage::Stop => break,
+                                        AudioMessage::Stop => {
+                                            stopped = true;
+                                            break;
+                                        }
                                     }
                                 }
                             } else {
@@ -225,9 +229,16 @@ impl AudioHandler {
                                 );
                             }
                         }
-                        AudioHandlerResult {
-                            audio_handler: self,
-                            error: AudioError::Closed,
+                        if !stopped {
+                            AudioHandlerResult {
+                                audio_handler: self,
+                                error: AudioError::Closed,
+                            }
+                        } else {
+                            AudioHandlerResult {
+                                audio_handler: self,
+                                error: AudioError::Stopped,
+                            }
                         }
                     } else {
                         AudioHandlerResult {
