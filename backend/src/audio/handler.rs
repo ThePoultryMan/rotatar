@@ -124,6 +124,7 @@ impl AudioHandler {
     /// The future resolves when:
     /// 1. No config was found.
     /// 2. An error occurred while playing the stream.
+    /// 3. The audio receiver received a stop signal (`AudioMessage::Stop`)
     pub async fn play(self) -> AudioHandlerResult {
         if let Some(ref config) = self.config {
             let sampling_rate = config.sample_rate.0;
